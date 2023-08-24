@@ -1,0 +1,26 @@
+LE1:
+    name: Level 1
+    gitlab_groups:
+        LE1: PF-LE1
+        
+LE2:
+    name: Level 2
+    gitlab_groups:
+        NIR: PF-NIR
+        VIS: PF-VIS
+        SPE: PF-SPE
+        MER: PF-MER
+        SHE: PF-SHE
+        PHZ: PF-PHZ
+        SIR: PF-SIR
+        SIM: PF-SIM
+        EXT: PF-EXT
+LE3 :
+    name: Level 3
+    gitlab_groups:
+        LE3_Weak_Lensing: PF-LE3-WL
+        LE3_Galaxy_Clustering: PF-LE3-GC
+        LE3_Cluster_of_Galaxies: PF-LE3-CL
+        LE3_Internal_Data: PF-LE3-ID
+        LE3_Internal_Data_VMPZ: PF-LE3-VMPZ
+        LE3_External_Data: PF-LE3-ED
