@@ -14,5 +14,9 @@ export GITLAB_TOKEN=...
 export REDMINE_SERVER=...
 export REDMINE_TOKEN=....
 
+# pip install -r requirements.txt
 
+# examples of commands
 
+> python changes --help
+> python changes 
