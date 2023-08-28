@@ -4,9 +4,10 @@ from redminelib import Redmine
 from log_config import logger
 import os
 
-REDMINE_PROJECT="maturity-assessment"
-PARENT_WIKI_PAGE="Changes"
-TOP_PARENT_WIKI_PAGE="Files_modified_in_projects"
+REDMINE_PROJECT = "maturity-assessment"
+PARENT_WIKI_PAGE = "Changes"
+TOP_PARENT_WIKI_PAGE = "Files_modified_in_projects"
+
 
 # class taht manage redmine wiki pages
 class RedmineWikiPages:
@@ -73,9 +74,7 @@ class RedmineWikiPages:
     # if the wiki page exist return true else return false
     def check_wiki_page_exist(self, delete_if_exists: bool, wiki_page_name: str):
         # Get the project by its identifier or name
-        project = self.redmine.project.get(
-            self.project_name
-        )  # redmine.project.get('project_identifier')
+        project = self.redmine.project.get(self.project_name)  # redmine.project.get('project_identifier')
 
         # Get the list of all wiki pages for the project
         wiki_pages = project.wiki_pages
@@ -103,11 +102,10 @@ class RedmineWikiPages:
         wiki_page_content: str,
         wiki_page_parent: str,
         wiki_page_comments: str,
-        wiki_page_notify: bool):
+        wiki_page_notify: bool,
+    ):
         # Get the project by its identifier or name
-        project = self.redmine.project.get(
-            self.project_name
-        )  # redmine.project.get('project_identifier')
+        project = self.redmine.project.get(self.project_name)  # redmine.project.get('project_identifier')
 
         # Create a new wiki page
         wiki_page = self.redmine.wiki_page.create(
@@ -116,18 +114,17 @@ class RedmineWikiPages:
             text=wiki_page_content,
             parent_title=wiki_page_parent,
             comments=wiki_page_comments,
-            notify=wiki_page_notify)
+            notify=wiki_page_notify,
+        )
 
         return wiki_page
-    
-    def update_wiki_page(self,wiki_page_name: str,content_to_be_added: str):
+
+    def update_wiki_page(self, wiki_page_name: str, content_to_be_added: str):
         # Get the project by its identifier or name
-        project = self.redmine.project.get(
-            self.project_name
-        )  # redmine.project.get('project_identifier')
+        project = self.redmine.project.get(self.project_name)  # redmine.project.get('project_identifier')
 
         # Create a new wiki page
-        wiki_page = self.redmine.wiki_page.get(project_id=project.id,resource_id=wiki_page_name)
+        wiki_page = self.redmine.wiki_page.get(project_id=project.id, resource_id=wiki_page_name)
 
         # return true if the wiki page is created else return false
         return wiki_page
@@ -146,8 +143,8 @@ class RedmineWikiPages:
 
         return text
 
-    def print_table_in_wiki_page(
-        self, wiki_page_name: str, wiki_page_header: str, data: list, row_names: list
+    def create_table_in_a_new_wiki_page(
+        self, wiki_page_name: str, parent_wiki_page: str, wiki_page_header: str, data: list, row_names: list
     ):
         # Example data and row names
         # data = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
@@ -163,9 +160,15 @@ class RedmineWikiPages:
         )
 
         if not wiki_page_exist:
-            self.logger.info(f"wiki page {wiki_page_name} will be created")
-            wiki_page = self.create_wiki_page(wiki_page_name,wiki_page_content,wiki_page_parent=TOP_PARENT_WIKI_PAGE,wiki_page_comments="script",wiki_page_notify=False)
-            self.logger.info(wiki_page)
+            self.logger.debug(f"wiki page {wiki_page_name} will be created")
+            wiki_page = self.create_wiki_page(
+                wiki_page_name,
+                wiki_page_content,
+                wiki_page_parent=parent_wiki_page,
+                wiki_page_comments="script",
+                wiki_page_notify=False,
+            )
+            self.logger.info(f"wiki page {wiki_page_name} created")
 
         # if the acces is not ok
         else:
@@ -194,31 +197,30 @@ class RedmineWikiPages:
             wiki_page_object.text += wiki_page_content
             wiki_page_object.save()
             self.logger.info("Wiki page " + wiki_page_object.title + " updated")
-            
-    
+
         # if the acces is not ok
         else:
             self.logger.critical("Acces not ok")
 
         # return true if the wiki page is created else return false
         return wiki_page_object
-    
 
-    def delete_wiki_pages(self,wiki_project_name:str,wiki_page_name_with_string:str,delete:bool=False):
-
+    def delete_wiki_pages(
+        self,
+        wiki_project_name: str,
+        wiki_page_name_with_string: str,
+        delete: bool = False,
+    ):
         # Get the project by its identifier or name
-        project = self.redmine.project.get(
-            self.project_name
-        )  # redmine.project.get('project_identifier')
+        project = self.redmine.project.get(self.project_name)  # redmine.project.get('project_identifier')
 
         # Get the list of all wiki pages for the project
         wiki_pages = project.wiki_pages
         for wiki_page in wiki_pages:
-            if wiki_page_name_with_string.lower() in wiki_page.title.lower():
+            if wiki_page.title.lower().startswith(wiki_page_name_with_string.lower()):
                 if delete:
                     # delete the wiki page
                     wiki_page.delete()
                     self.logger.info(f"Wiki page {wiki_page.title} deleted")
                 else:
                     self.logger.info(f"Wiki page {wiki_page.title} exists")
-  

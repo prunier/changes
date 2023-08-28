@@ -24,3 +24,32 @@ LE3 :
         LE3_Internal_Data: PF-LE3-ID
         LE3_Internal_Data_VMPZ: PF-LE3-VMPZ
         LE3_External_Data: PF-LE3-ED
+ST_ADMIN:
+    name: ST administration and validation tools
+    gitlab_groups:
+        ST_TOOLS: sy-tools
+COMMON_LIBS:
+    name: Common libraries
+    gitlab_groups:
+        COMMON_LIBS: EuclidLibs
+        Data_Quality: ST-DQ
+        Common_Tools: ST-TOOLS
+INFRA:
+    name: projects setting the SGS infrastructure
+    gitlab_groups:
+        COmmon_ORchestration_System: ST-ORCH
+        Euclid_Archive_System: ST-EAS
+        Data_Model_tools: ST-DM
+        Monitoring_and_Control: ST-MC
+        IAL: ST-IAL
+SDCs:
+    name: tools and data by SDC
+    gitlab_groups:
+        SDC-UK: SDC-UK
+        SDC-ES: SDC-ES
+        SDC-NL: SDC-NL
+        SDC-IT: SDC-IT
+        SDC-FI: SDC-FI
+        SDC-FR: SDC-FR
+        SDC-DE: SDC-DE
+        SDC-CH: SDC-CH
