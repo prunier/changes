@@ -1,6 +1,7 @@
 import gitlab  # pip install python-gitlab
 import os
 from log_config import logger
+from gitlab.exceptions import GitlabGetError
 
 BRANCH = "develop"
 SINCE_DATE = "2023-06-09 15:00"
@@ -55,8 +56,15 @@ class Repos:
             # return false
             return False
 
+    def check_project_exists(self,project_path):
+        try:
+            project = self.gl.projects.get(project_path)
+            return True
+        except GitlabGetError:
+            return False
+
     # function that get the group repos with two parameters : gitlab object and group name
-    def get_groups_with_path_with_namespace(self, group: str):
+    def get_projects_with_path_with_namespace(self, group: str):
         groups = []
         # get the group repos
         group_repos = self.gl.groups.get(group).projects.list(all=True)
