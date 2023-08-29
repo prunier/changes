@@ -1,6 +1,7 @@
 import gitlab  # pip install python-gitlab
 import os
 from log_config import logger
+from datetime import datetime
 from gitlab.exceptions import GitlabGetError
 
 BRANCH = "develop"
@@ -78,8 +79,9 @@ class Repos:
 
     # function that returns the of modifications done on the files in a project withese parameters : gitlab object, project, file path, branch name, since date
     def get_modifications_by_file(
-        self, project, branch_name: str = BRANCH, period_list: list = [SINCE_DATE, UNTIL_DATE, False]      
+        self, gitlab_project_name:str, branch_name: str = BRANCH, period_list: list = [SINCE_DATE, UNTIL_DATE, False]      
     ):
+        project = self.gl.projects.get(gitlab_project_name)
         modifications_by_file = {}
         # get the file commits
         if project.path == "empty":
@@ -150,6 +152,39 @@ class Repos:
         # return of file commits
         return modifications_by_file
 
+    def get_tags(self, project) -> list:
+
+        tag_full_list=[]
+        latest_tag = ""
+        before_latest_tag = ""
+
+        tags = project.tags.list()
+        logger.debug(f"tags of the project ={tags} in " + project.name)
+        for tag in tags:
+            commit = tag.commit
+            # get the creation date of the tag
+            created_at = commit['created_at'] if commit else "N/A"
+            author_name = commit['author_name'] if commit else "N/A"
+
+            tag_full_list.append({'name':tag.name,'created_at':created_at,'author_name':author_name})
+        tag_full_list.sort(key=lambda x: x['created_at'])
+        tag_short_list = [tag['name'] for tag in tag_full_list]
+
+        if tag_full_list:
+            latest_tag = tag_full_list[-1]
+            latest_tag = latest_tag['name']
+            if len(tag_full_list) >= 2:
+                before_latest_tag = tag_full_list[-2]
+                before_latest_tag = before_latest_tag['name']
+            else:
+                logger.warning(f"only one tag in " + project.name)
+        else:
+            logger.warning(f"no tag in " + project.name)
+
+        logger.debug(f"tag_short_list= {tag_short_list}, latest_tag ={latest_tag} and before_latest_tag={before_latest_tag} in " + project.name)
+        return [tag_full_list,latest_tag, before_latest_tag]
+    
+
     # function that get all the files of a gitlab project with two parameters : gitlab object and project name
     def list_files_in_subdirectories(self, project, file_path='', branch_name: str = BRANCH):
         table = []
@@ -193,3 +228,53 @@ class Repos:
 
         # table,row_names = self.list_files_in_subdirectories(project, file_path='',branch_name=branch_name)
         return table, row_names
+    
+    def is_valid_datetime(self,input_str):
+    # Test cases
+    # date_time_str1 = "2023-08-21 15:30"
+    # date_time_str2 = "2023-08-21 25:30"  # Invalid hour
+    # date_time_str3 = "2023-08-21"        # Missing time part
+        try:
+            datetime.strptime(input_str, '%Y-%m-%d %H:%M')
+            return True
+        except ValueError:
+            return False
+
+
+
+    def set_the_period_of_the_project(self, gitlab_project_name:str, start:str, end:str) -> list:
+            
+        project = self.gl.projects.get(gitlab_project_name)
+        project_name = project.name
+
+
+        period_list = [start,end, False] # default: start date , end date , tag = False
+
+        if self.is_valid_datetime(start) and self.is_valid_datetime(end):
+            period_list = [start,end, False]
+        else:
+            
+            # start and end should be tags (if not empty values)
+            [tag_full_list,latest_tag, before_latest_tag] = self.get_tags(project)
+            tag_short_list = [tag['name'] for tag in tag_full_list]
+
+            if not start:
+                start = before_latest_tag
+            if not end:
+                end = latest_tag
+
+            #check if start is not in the dictionary tag_list and raise an error if it is the case
+
+            if start not in tag_short_list:
+                logger.critical(f"Tag '{start}' does not exist in the project '{project_name}'")
+                raise ValueError(f"Tag '{start}' does not exist in the project '{project_name}'")
+            if end not in tag_short_list:
+                logger.critical(f"Tag '{end}' does not exist in the project '{project_name}'")
+                raise ValueError(f"Tag '{end}' does not exist in the project '{project_name}'")
+        
+            if start and end:
+                # return 2 latest tag names
+                period_list = [start,end, True]
+
+            
+        return period_list  

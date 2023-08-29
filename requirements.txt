@@ -2,3 +2,4 @@ python-gitlab
 pyyaml
 python-redmine
 pprint
+tabulate

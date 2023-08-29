@@ -6,7 +6,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--level", "LE1", "-s","2023-06-09 09:00", "-e","2023-08-10 09:00","-p","PF-LE1/le1_vis_docker","-s","2021-07-09 09:00", "-e","2023-07-09 09:00"],
+        "args": ["--level", "LE1", "-s","2023-06-09 09:00", "-e","2023-08-10 09:00","-p","PF-LE1/LE1_VIS_Validation","-s","0.2", "-e","0.4"],
         "console": "integratedTerminal"
       }
     ]
