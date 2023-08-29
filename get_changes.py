@@ -109,22 +109,42 @@ def print_in_console_the_gitlab_projects_selected(gitlab_projects_selected):
     headers = ['Level','Group','Project Name', 'Start Date', 'End Date']
 
     for item in gitlab_projects_selected:
-        if 'modifications_by_file' in item:
+        if 'count_files_modified' in item:
             #modifications_by_file = item['modifications_by_file']
             #for file in modifications_by_file:
             #    table.append(['', '', file['file_path'], file['start'], file['end']])
-            table.append([item['level'],item['group'], item['name'], item['start'], item['end'],item['modifications_by_file']])
+            table.append([item['level'],item['group'], item['name'], item['start'], item['end'],item['count_files_modified']])
         else:
             table.append([item['level'],item['group'], item['name'], item['start'], item['end']])
 
 
 
-    if 'modifications_by_file' in gitlab_projects_selected[0]:
-        headers.append('Modifications by file')
+    if 'count_files_modified' in gitlab_projects_selected[0]:
+        headers.append('count of files modified')
 
     table_str = tabulate(table, headers, tablefmt='simple') # grid, simple, plain, pipe, orgtbl, rst, mediawiki, html, latex, latex_raw, latex_booktabs, tsv
 
     print(table_str)
+
+def print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_projects_selected):
+
+    # pretty print of the list of projects gitlab_projects_selected
+    headers = ['file','Author name','Created_= at']
+
+    for item in gitlab_projects_selected:
+        print("=" * 100)
+        print("Level = "+str(item['level'])+" Group = " + str(item['group']) + " Project = " + item['name'] + " Start = " + item['start'] + " End = "+ item['end'])
+        print("=" * 100)
+        table = []
+
+        if 'count_files_modified' in item and item['count_files_modified'] != '0':
+            modifications_by_file = item['modifications_by_file']
+            for file,modifications in modifications_by_file.items():
+                for m in modifications:
+                    table.append([file,m[2],m[3]]) # m[4] = Id, m[1] = Title
+        
+        table_str = tabulate(table, headers, tablefmt='simple')
+        print(table_str)
 
 
 def main(args):
@@ -170,8 +190,10 @@ def main(args):
         period_list = repo.set_the_period_of_the_project(gitlab_project_name, item['start'], item['end'])
         modifications_by_file = repo.get_modifications_by_file(gitlab_project_name, branch_name=branch_name, period_list=period_list)
         #modifications_by_file = []
-        item['modifications_by_file'] = str(len(modifications_by_file))
-    print_in_console_the_gitlab_projects_selected(gitlab_projects_selected)
+        item['count_files_modified'] = str(len(modifications_by_file))
+        item['modifications_by_file'] = modifications_by_file
+    #print_in_console_the_gitlab_projects_selected(gitlab_projects_selected)
+    print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_projects_selected)
 
     
     
