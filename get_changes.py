@@ -6,6 +6,12 @@ from tabulate import tabulate
 from log_config import logger
 
 from repos import Repos
+from wiki import RedmineWikiPages
+
+from wiki import PARENT_WIKI_PAGE
+from wiki import REDMINE_PROJECT
+from wiki import TOP_PARENT_WIKI_PAGE
+
 
 
 def parse_arguments(args):
@@ -67,10 +73,10 @@ def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
                             gitlab_projects_selected.append(dict1)
 
         if item["type"] == "group":
-            group_name = item["name"]
-            logger.info(f"Selecting projects in the group  '{group_name}'")
+            gitlab_group = item["name"]
+            logger.info(f"Selecting projects in the group  '{gitlab_group}'")
             # get the gitlab projects in the group
-            gitlab_projects = repo.get_projects_with_path_with_namespace(group=group_name)
+            gitlab_projects = repo.get_projects_with_path_with_namespace(group=gitlab_group)
             for gitlab_project in gitlab_projects:
                 # check if gitlab_project exist in the list of dictionaries gitlab_projects_selected
                 if any(d['name'] == gitlab_project for d in gitlab_projects_selected):
@@ -83,6 +89,7 @@ def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
 
         if item["type"] == "project":
             gitlab_project = item["name"]
+            gitlab_group = gitlab_project.split("/")[0] # PF-LE1/LE1_VIS" -> group is PF-LE1
             logger.info(f"Selecting project  '{gitlab_project}'")
             # get the gitlab projects in the group
             if repo.check_project_exists(gitlab_project):
@@ -92,7 +99,7 @@ def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
                     # delete the dictionary with the same name
                     gitlab_projects_selected = [d for d in gitlab_projects_selected if d.get('name') != gitlab_project]
                     logger.warning(f"Project '{gitlab_project}' already selected. Deleting it from the list.")
-                dict1 = {'name': gitlab_project,'level':None,'group':None,'start':item['start'],'end':item['end']}
+                dict1 = {'name': gitlab_project,'level':None,'group':gitlab_group,'start':item['start'],'end':item['end']}
                 gitlab_projects_selected.append(dict1)
 
             else:
@@ -103,6 +110,9 @@ def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
     return gitlab_projects_selected
 
 def print_in_console_the_gitlab_projects_selected(gitlab_projects_selected):
+
+    if len(gitlab_projects_selected) == 0:
+        return
 
     # pretty print of the list of projects gitlab_projects_selected
     table = []
@@ -134,7 +144,7 @@ def print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_pr
     for item in gitlab_projects_selected:
         print("=" * 100)
         print("Level = "+str(item['level'])+" Group = " + str(item['group']) + " Project = " + item['name'] + " Start = " + item['start'] + " End = "+ item['end'])
-        print("=" * 100)
+        print()
         table = []
 
         if 'count_files_modified' in item and item['count_files_modified'] != '0':
@@ -143,8 +153,17 @@ def print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_pr
                 for m in modifications:
                     table.append([file,m[2],m[3]]) # m[4] = Id, m[1] = Title
         
-        table_str = tabulate(table, headers, tablefmt='simple')
-        print(table_str)
+            table_str = tabulate(table, headers, tablefmt='simple')
+            print(table_str)
+
+def print_the_modifications_in_the_selected_gitlab_group(wiki,gitlab_projects_selected):
+
+    logger.info(f"--------------------print in wiki page--------------------------------")
+
+    for item in gitlab_projects_selected:
+        print("=" * 100)
+        print("Level = "+str(item['level'])+" Group = " + str(item['group']) + " Project = " + item['name'] + " Start = " + item['start'] + " End = "+ item['end'])
+        print()
 
 
 def main(args):
@@ -192,10 +211,14 @@ def main(args):
         #modifications_by_file = []
         item['count_files_modified'] = str(len(modifications_by_file))
         item['modifications_by_file'] = modifications_by_file
-    #print_in_console_the_gitlab_projects_selected(gitlab_projects_selected)
+    print_in_console_the_gitlab_projects_selected(gitlab_projects_selected)
     print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_projects_selected)
 
-    
+    logger.debug("Connecting to the redmine server")
+    wiki = RedmineWikiPages(project_name=REDMINE_PROJECT)
+    logger.debug(wiki) 
+    print_the_modifications_in_the_selected_gitlab_group(wiki,gitlab_projects_selected)
+
     
         
 

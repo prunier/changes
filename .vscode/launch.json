@@ -2,11 +2,27 @@
     "version": "0.2.0",
     "configurations": [
       {
-        "name": "Run Python Script",
+        "name": "Run Python Script 1 for level LE1",
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
         "args": ["--level", "LE1", "-s","2023-06-09 09:00", "-e","2023-08-10 09:00","-p","PF-LE1/LE1_VIS_Validation","-s","0.2", "-e","0.4"],
+        "console": "integratedTerminal"
+      },
+      {
+        "name": "Run Python Script 2 for group PF-LE1",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/get_changes.py",
+        "args": ["-g","PF-LE1","-s","2023-06-09 09:00", "-e","2023-08-10 09:00"],
+        "console": "integratedTerminal"
+      },
+      {
+        "name": "Run Python Script 3 for project LE1_VIS_Validation",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/get_changes.py",
+        "args": ["-p","PF-LE1/LE1_VIS","-s","2023-06-09 09:00", "-e","2023-08-10 09:00"],
         "console": "integratedTerminal"
       }
     ]
