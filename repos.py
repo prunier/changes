@@ -9,6 +9,20 @@ SINCE_DATE = "2023-06-09 15:00"
 UNTIL_DATE = "2023-06-14 14:00"
 
 
+def is_valid_datetime(input_str):
+# Test cases
+# date_time_str1 = "2023-08-21 15:30"
+# date_time_str2 = "2023-08-21 25:30"  # Invalid hour
+# date_time_str3 = "2023-08-21"        # Missing time part
+    try:
+        datetime.strptime(input_str, '%Y-%m-%d %H:%M')
+        return True
+    except ValueError:
+        return False
+    
+def is_tag(input_str):
+    return not is_valid_datetime(input_str)    
+
 # class Repos with a constructor that take two parameters : gitlab server and private token
 class Repos:
     def __init__(self, gitlab_server=None, private_token=None):
@@ -229,18 +243,6 @@ class Repos:
         # table,row_names = self.list_files_in_subdirectories(project, file_path='',branch_name=branch_name)
         return table, row_names
     
-    def is_valid_datetime(self,input_str):
-    # Test cases
-    # date_time_str1 = "2023-08-21 15:30"
-    # date_time_str2 = "2023-08-21 25:30"  # Invalid hour
-    # date_time_str3 = "2023-08-21"        # Missing time part
-        try:
-            datetime.strptime(input_str, '%Y-%m-%d %H:%M')
-            return True
-        except ValueError:
-            return False
-
-
 
     def set_the_period_of_the_project(self, gitlab_project_name:str, start:str, end:str) -> list:
             
@@ -250,7 +252,7 @@ class Repos:
 
         period_list = [start,end, False] # default: start date , end date , tag = False
 
-        if self.is_valid_datetime(start) and self.is_valid_datetime(end):
+        if is_valid_datetime(start) and is_valid_datetime(end):
             period_list = [start,end, False]
         else:
             

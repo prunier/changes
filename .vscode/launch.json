@@ -2,7 +2,23 @@
     "version": "0.2.0",
     "configurations": [
       {
-        "name": "Run Python Script 1 for level LE1",
+        "name": "all the levels of the SGS",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/get_changes.py",
+        "args": ["--level", "SGS", "-s","2023-06-09 09:00", "-e","2023-08-10 09:00"],
+        "console": "integratedTerminal"
+      },
+      {
+        "name": " levels LE1,LE2",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/get_changes.py",
+        "args": ["--level", "LE1","-s","2023-06-09 09:00", "-e","2023-08-10 09:00","--level", "LE2","-s","2023-07-09 09:00", "-e","2023-09-10 09:00"],
+        "console": "integratedTerminal"
+      },
+      {
+        "name": "level LE1",
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
@@ -10,7 +26,7 @@
         "console": "integratedTerminal"
       },
       {
-        "name": "Run Python Script 2 for group PF-LE1",
+        "name": "group PF-LE1",
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
@@ -18,7 +34,7 @@
         "console": "integratedTerminal"
       },
       {
-        "name": "Run Python Script 3 for project LE1_VIS_Validation",
+        "name": "project LE1_VIS_Validation",
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",

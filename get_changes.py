@@ -4,14 +4,18 @@ import yaml
 
 from tabulate import tabulate
 from log_config import logger
+from collections import defaultdict
 
-from repos import Repos
-from wiki import RedmineWikiPages
+
+from repos import Repos,is_tag
+from wiki import Wiki_pages_with_Redmine
+import write_wiki_pages as wwp
 
 from wiki import PARENT_WIKI_PAGE
 from wiki import REDMINE_PROJECT
 from wiki import TOP_PARENT_WIKI_PAGE
 
+from repos import BRANCH
 
 
 def parse_arguments(args):
@@ -50,58 +54,98 @@ def load_SGS_gitlab_groups(input_yaml_file: str) -> dict:
 
     return SGS_gitlab_groups
 
+def is_level_name(SGS_gitlab_groups,level_name_to_find):
 
-    # loop over the projects belonging to the level specified in the input arguments
+    if level_name_to_find not in SGS_gitlab_groups.keys():
+        logger.critical(f"The level name'{level_name_to_find}' does not exist in the input configuration file'")
+        raise ValueError(f"The level name '{level_name_to_find}' does not exist in the input configuration file'")
+    return True
+
+def get_level_name(SGS_gitlab_groups,gitlab_group_name_to_find):
+
+    level_name = "unknown_level"
+    for level_name in SGS_gitlab_groups.keys():
+        element = SGS_gitlab_groups[level_name]
+        level_long_name = element['name']
+        gitlab_groups_of_the_level = element["gitlab_groups"]
+        for gitlab_long_name,gitlab_group in gitlab_groups_of_the_level.items():
+            if gitlab_group == gitlab_group_name_to_find:
+                return level_name
+
+    logger.critical(f"The gitlab group '{gitlab_group_name_to_find}' does not exist in the input configuration file'")
+    raise ValueError(f"The gitlab group '{gitlab_group_name_to_find}' does not exist in the input configuration file'")
+
+
+def dictionalry_3d_empty(three_dimensional_dict,i,j,k):
+    # Check if the cell is not empty in the three-dimensional dictionary
+    if i in three_dimensional_dict and j in three_dimensional_dict[i] and k in three_dimensional_dict[i][j]:
+        cell_value = three_dimensional_dict[i][j][k]
+        if cell_value is not None and cell_value != '':
+            #print(f"The cell ({i}, {j}, {k}) is not empty. Value: {cell_value}")
+            return False
+        else:
+            # print(f"The cell ({i}, {j}, {k}) is empty.")
+            return True
+    else:
+        #print(f"The cell ({i}, {j}, {k}) does not exist in the three-dimensional dictionary.")
+        return True
+
+
+
+
 def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
 
-    gitlab_projects_selected = []
+    gitlab_projects_selected = defaultdict(lambda: defaultdict(dict))
+
+    #if parsed_arguments
 
     for item in parsed_arguments:
         if item["type"] == "level":
             level_name = item["name"]
+            is_level_name(SGS_gitlab_groups,level_name)
             logger.info(f"Selecting projects for the level '{level_name}'")
-            if level_name in SGS_gitlab_groups.keys():
-                    element = SGS_gitlab_groups[level_name]
-                    level_long_name = element['name']
-                    gitlab_groups_of_the_level = element["gitlab_groups"]
-                    for gitlab_long_name,gitlab_group in gitlab_groups_of_the_level.items():
-                        logger.info(f"Selecting projects for the gitlab group '{gitlab_group}'")
-                        # get the gitlab projects in the level
-                        gitlab_projects = repo.get_projects_with_path_with_namespace(group=gitlab_group)
-                        for gitlab_project in gitlab_projects:
-                            dict1 = {'name': gitlab_project,'level':level_name,'group':gitlab_group,'start':item['start'],'end':item['end']}
-                            gitlab_projects_selected.append(dict1)
+
+            element = SGS_gitlab_groups[level_name]
+            level_long_name = element['name']
+            gitlab_groups_of_the_level = element["gitlab_groups"]
+            for gitlab_long_name,gitlab_group in gitlab_groups_of_the_level.items():
+                logger.info(f"Selecting projects for the gitlab group '{gitlab_group}'")
+                # get the gitlab projects in the level
+                gitlab_projects = repo.get_projects_with_path_with_namespace(group=gitlab_group)
+                for gitlab_project in gitlab_projects:
+                    dict1 = {'start':item['start'],'end':item['end'],'is_tag':is_tag(item['start'])}
+                    gitlab_projects_selected[level_name][gitlab_group][gitlab_project] = dict1
 
         if item["type"] == "group":
             gitlab_group = item["name"]
             logger.info(f"Selecting projects in the group  '{gitlab_group}'")
+            level_name = get_level_name(SGS_gitlab_groups,gitlab_group)
             # get the gitlab projects in the group
             gitlab_projects = repo.get_projects_with_path_with_namespace(group=gitlab_group)
             for gitlab_project in gitlab_projects:
                 # check if gitlab_project exist in the list of dictionaries gitlab_projects_selected
-                if any(d['name'] == gitlab_project for d in gitlab_projects_selected):
+                if not dictionalry_3d_empty (gitlab_projects_selected,level_name,gitlab_group,gitlab_project):
                     # delete the dictionary with the same name
-                    gitlab_projects_selected = [d for d in gitlab_projects_selected if d.get('name') != gitlab_project]
-                    # get the name of the level of the project
                     logger.warning(f"Project '{gitlab_project}' already selected. Deleting it from the list.")
-                dict1 = {'name': gitlab_project,'level':None,'group':gitlab_group,'start':item['start'],'end':item['end']}
-                gitlab_projects_selected.append(dict1)
+                dict1 = {'start':item['start'],'end':item['end'],'is_tag':is_tag(item['start'])}
+                gitlab_projects_selected[level_name][gitlab_group][gitlab_project] = dict1
 
         if item["type"] == "project":
             gitlab_project = item["name"]
             gitlab_group = gitlab_project.split("/")[0] # PF-LE1/LE1_VIS" -> group is PF-LE1
+            short_gitlab_project = gitlab_project.split("/")[1] # PF-LE1/LE1_VIS" -> short_gitlab_project is LE1_VIS
+            level_name = get_level_name(SGS_gitlab_groups,gitlab_group)
+
             logger.info(f"Selecting project  '{gitlab_project}'")
             # get the gitlab projects in the group
             if repo.check_project_exists(gitlab_project):
                 logger.debug(f"Project '{gitlab_project}' exists.")
-                # check if gitlab_project exist in the list of dictionaries gitlab_projects_selected
-                if any(d['name'] == gitlab_project for d in gitlab_projects_selected):
-                    # delete the dictionary with the same name
-                    gitlab_projects_selected = [d for d in gitlab_projects_selected if d.get('name') != gitlab_project]
-                    logger.warning(f"Project '{gitlab_project}' already selected. Deleting it from the list.")
-                dict1 = {'name': gitlab_project,'level':None,'group':gitlab_group,'start':item['start'],'end':item['end']}
-                gitlab_projects_selected.append(dict1)
 
+                if not dictionalry_3d_empty (gitlab_projects_selected,level_name,gitlab_group,gitlab_project):
+                    # delete the dictionary with the same name
+                    logger.warning(f"Project '{gitlab_project}' already selected. Deleting it from the list.")
+                dict1 = {'start':item['start'],'end':item['end'],'is_tag':is_tag(item['start'])}
+                gitlab_projects_selected[level_name][gitlab_group][gitlab_project] = dict1
             else:
                 logger.error(f"Gitlab project '{gitlab_project}' does not exist.")
 
@@ -115,70 +159,60 @@ def print_in_console_the_gitlab_projects_selected(gitlab_projects_selected):
         return
 
     # pretty print of the list of projects gitlab_projects_selected
-    table = []
     headers = ['Level','Group','Project Name', 'Start Date', 'End Date']
 
-    for item in gitlab_projects_selected:
-        if 'count_files_modified' in item:
-            #modifications_by_file = item['modifications_by_file']
-            #for file in modifications_by_file:
-            #    table.append(['', '', file['file_path'], file['start'], file['end']])
-            table.append([item['level'],item['group'], item['name'], item['start'], item['end'],item['count_files_modified']])
-        else:
-            table.append([item['level'],item['group'], item['name'], item['start'], item['end']])
+# Converting the three-dimensional dictionary to a list of tuples
+    table_data = []
+    count_files_modified_flag = False
 
+    for level_name, gitlab in gitlab_projects_selected.items():
+        for gitlab_group_name, project in gitlab.items():
+            for gitlab_project_name, item in project.items():
+                if 'count_files_modified' in item:
+                    table_data.append((level_name, gitlab_group_name, gitlab_project_name, item['start'], item['end'], item['count_files_modified']))
+                    count_files_modified_flag = True
+                else:
+                    # value is a dictionary with the keys 'start', 'end', 'is_tag'
+                    table_data.append((level_name, gitlab_group_name, gitlab_project_name, item['start'], item['end']))
 
-
-    if 'count_files_modified' in gitlab_projects_selected[0]:
+    if count_files_modified_flag:
         headers.append('count of files modified')
 
-    table_str = tabulate(table, headers, tablefmt='simple') # grid, simple, plain, pipe, orgtbl, rst, mediawiki, html, latex, latex_raw, latex_booktabs, tsv
+    table_str = tabulate(table_data, headers, tablefmt='simple') # grid, simple, plain, pipe, orgtbl, rst, mediawiki, html, latex, latex_raw, latex_booktabs, tsv
 
     print(table_str)
 
 def print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_projects_selected):
 
     # pretty print of the list of projects gitlab_projects_selected
-    headers = ['file','Author name','Created_= at']
+    headers = ['File','Author name','Created_= at']
 
-    for item in gitlab_projects_selected:
-        print("=" * 100)
-        print("Level = "+str(item['level'])+" Group = " + str(item['group']) + " Project = " + item['name'] + " Start = " + item['start'] + " End = "+ item['end'])
-        print()
-        table = []
+# Converting the three-dimensional dictionary to a list of tuples
+    table_data = []
+    count_files_modified_flag = False
 
-        if 'count_files_modified' in item and item['count_files_modified'] != '0':
-            modifications_by_file = item['modifications_by_file']
-            for file,modifications in modifications_by_file.items():
-                for m in modifications:
-                    table.append([file,m[2],m[3]]) # m[4] = Id, m[1] = Title
-        
-            table_str = tabulate(table, headers, tablefmt='simple')
-            print(table_str)
+    for level_name, gitlab in gitlab_projects_selected.items():
+        for gitlab_group_name, project in gitlab.items():
+            for gitlab_project_name, item in project.items():
 
-def print_the_modifications_in_the_selected_gitlab_group(wiki,gitlab_projects_selected):
-
-    logger.info(f"--------------------print in wiki page--------------------------------")
-
-    for item in gitlab_projects_selected:
-        print("=" * 100)
-        print("Level = "+str(item['level'])+" Group = " + str(item['group']) + " Project = " + item['name'] + " Start = " + item['start'] + " End = "+ item['end'])
-        print()
+                print("=" * 100)
+                print("Level = "+level_name+" Group = " + gitlab_group_name + " Project = " + gitlab_project_name+ " Start = " + item['start'] + " End = "+ item['end'])
+                print()
+                table = []
+                if 'count_files_modified' in item and item['count_files_modified'] != '0':
+                    modifications_by_file = item['modifications_by_file']
+                    for file,modifications in modifications_by_file.items():
+                        for m in modifications:
+                            table.append([file,m[2],m[3]]) # m[4] = Id, m[1] = Title
+                
+                    table_str = tabulate(table, headers, tablefmt='simple')
+                    print(table_str)
 
 
 def main(args):
     parser = argparse.ArgumentParser(description="Example script with subarguments")
 
     parsed_arguments = parse_arguments(args)
-
-    for item in parsed_arguments:
-        if item["type"] == "project":
-            logger.debug(f"Setting times or tags for project '{item['name']}': Start: {item['start']}, End: {item['end']}")
-        elif item["type"] == "group":
-            logger.debug(f"Setting times or tags for group '{item['name']}': Start: {item['start']}, End: {item['end']}")
-        elif item["type"] == "level":
-            logger.debug(f"Setting times or tags for level '{item['name']}': Start: {item['start']}, End: {item['end']}")
-
 
     # Get the logger specified in the file
 
@@ -188,6 +222,26 @@ def main(args):
     logger.debug("Loading the SGS gitlab groups")
     SGS_gitlab_groups = load_SGS_gitlab_groups("SGS_gitlab_groups.yaml")
 
+    for item in parsed_arguments:
+        if item["type"] == "project":
+            logger.debug(f"Setting times or tags for project '{item['name']}': Start: {item['start']}, End: {item['end']}")
+        elif item["type"] == "group":
+            logger.debug(f"Setting times or tags for group '{item['name']}': Start: {item['start']}, End: {item['end']}")
+        elif item["type"] == "level":
+            logger.debug(f"Setting times or tags for level '{item['name']}': Start: {item['start']}, End: {item['end']}")
+
+    # if the first argument for the level is "SGS", then add all the levels to the list of arguments
+    if parsed_arguments[0]['name'] == 'SGS':
+        for level in SGS_gitlab_groups.keys():
+            added_item = {}
+            added_item['type'] = 'level'
+            added_item['name'] = level
+            added_item['start'] = item['start']
+            added_item['end'] = item['end']
+            parsed_arguments.append(added_item)
+        parsed_arguments.pop(0) # delete the first level "SGS" !
+
+
     logger.debug("Connecting to the gitlab server")
     repo = Repos()
     logger.debug(repo)
@@ -195,29 +249,29 @@ def main(args):
     gitlab_projects_selected =  get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups)
     print_in_console_the_gitlab_projects_selected(gitlab_projects_selected)
 
+
     branch_name = "develop"
 
     logger.info(f"----------------------------------------------------")
     logger.info(f"Looking for the modifications by selected project...")
     logger.info(f"----------------------------------------------------")
 
-    for item in gitlab_projects_selected:
-        logger.info(f"Project '{item['name']}': Start: {item['start']}, End: {item['end']}  ")
+    for level_name, gitlab_group_name in gitlab_projects_selected.items():
+        for gitlab_group_name, project in gitlab_group_name.items():
+            for gitlab_project_name, item in project.items():
+                period_list = repo.set_the_period_of_the_project(gitlab_project_name, item['start'], item['end'])
+                modifications_by_file = repo.get_modifications_by_file(gitlab_project_name, branch_name=branch_name, period_list=period_list)
 
-        gitlab_project_name= item['name']
-        # Recursively list all files in the subdirectories
-        period_list = repo.set_the_period_of_the_project(gitlab_project_name, item['start'], item['end'])
-        modifications_by_file = repo.get_modifications_by_file(gitlab_project_name, branch_name=branch_name, period_list=period_list)
-        #modifications_by_file = []
-        item['count_files_modified'] = str(len(modifications_by_file))
-        item['modifications_by_file'] = modifications_by_file
+                item['count_files_modified'] = str(len(modifications_by_file))
+                item['modifications_by_file'] = modifications_by_file
+        
     print_in_console_the_gitlab_projects_selected(gitlab_projects_selected)
     print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_projects_selected)
 
-    logger.debug("Connecting to the redmine server")
-    wiki = RedmineWikiPages(project_name=REDMINE_PROJECT)
-    logger.debug(wiki) 
-    print_the_modifications_in_the_selected_gitlab_group(wiki,gitlab_projects_selected)
+    #logger.debug("Connecting to the redmine server")
+    #wiki = Wiki_pages_with_Redmine(project_name=REDMINE_PROJECT)
+    #logger.debug(wiki) 
+    #wwp.print_the_modifications_in_the_selected_gitlab_group(wiki,gitlab_projects_selected)
 
     
         

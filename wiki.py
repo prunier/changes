@@ -10,7 +10,7 @@ TOP_PARENT_WIKI_PAGE = "Files_modified_in_projects"
 
 
 # class taht manage redmine wiki pages
-class RedmineWikiPages:
+class Wiki_pages_with_Redmine:
     def __init__(self, redmine_server=None, private_token=None, project_name=REDMINE_PROJECT):
         self.logger = logger
 
