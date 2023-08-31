@@ -4,7 +4,6 @@ from repos import BRANCH
 from repos import SINCE_DATE
 from repos import UNTIL_DATE
 
-from wiki import RedmineWikiPages
 from wiki import PARENT_WIKI_PAGE
 from wiki import REDMINE_PROJECT
 from wiki import TOP_PARENT_WIKI_PAGE

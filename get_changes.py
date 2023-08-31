@@ -8,19 +8,38 @@ from collections import defaultdict
 
 
 from repos import Repos,is_tag
-from wiki import Wiki_pages_with_Redmine
+from wiki import REDMINE_PROJECT, Wiki_pages_with_Redmine
 import write_wiki_pages as wwp
-
-from wiki import PARENT_WIKI_PAGE
-from wiki import REDMINE_PROJECT
-from wiki import TOP_PARENT_WIKI_PAGE
-
-from repos import BRANCH
 
 
 def parse_arguments(args):
+
     arguments = iter(args)
     result = []
+
+    session_name = "current"
+    list_string = ""
+    rm_string = ""
+
+    if args[0] in ("--session"):
+        session_name = args[1]
+        args.pop(0)
+        args.pop(0)
+
+    if args[0] in ("--list"):
+        list_string = args[1]
+        args.pop(0)
+        args.pop(0)
+        return session_name,result,list_string,rm_string
+
+
+    if args[0] in ("--rm"):
+        rm_string = args[1]
+        args.pop(0)
+        args.pop(0)
+        return session_name,result,list_string,rm_string
+
+
 
     for arg in arguments:
         if arg in ("-p", "--project"):
@@ -37,7 +56,7 @@ def parse_arguments(args):
         elif arg in ("-e", "--end"):
             item["end"] = next(arguments)
 
-    return result
+    return session_name,result,list_string,rm_string
 
 def load_SGS_gitlab_groups(input_yaml_file: str) -> dict:
     with open(input_yaml_file, "r") as f:
@@ -113,7 +132,10 @@ def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
                 # get the gitlab projects in the level
                 gitlab_projects = repo.get_projects_with_path_with_namespace(group=gitlab_group)
                 for gitlab_project in gitlab_projects:
-                    dict1 = {'start':item['start'],'end':item['end'],'is_tag':is_tag(item['start'])}
+                    if is_tag(item['start']):
+                        dict1 = {'start date':'','end date':'','start tag':item['start'],'end tag':item['end']}
+                    else:
+                        dict1 = {'start date':item['start'],'end date':item['end'],'start tag':'','end tag':''}
                     gitlab_projects_selected[level_name][gitlab_group][gitlab_project] = dict1
 
         if item["type"] == "group":
@@ -127,7 +149,11 @@ def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
                 if not dictionalry_3d_empty (gitlab_projects_selected,level_name,gitlab_group,gitlab_project):
                     # delete the dictionary with the same name
                     logger.warning(f"Project '{gitlab_project}' already selected. Deleting it from the list.")
-                dict1 = {'start':item['start'],'end':item['end'],'is_tag':is_tag(item['start'])}
+
+                if is_tag(item['start']):
+                    dict1 = {'start date':'','end date':'','start tag':item['start'],'end tag':item['end']}
+                else:
+                    dict1 = {'start date':item['start'],'end date':item['end'],'start tag':'','end tag':''}
                 gitlab_projects_selected[level_name][gitlab_group][gitlab_project] = dict1
 
         if item["type"] == "project":
@@ -144,7 +170,10 @@ def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
                 if not dictionalry_3d_empty (gitlab_projects_selected,level_name,gitlab_group,gitlab_project):
                     # delete the dictionary with the same name
                     logger.warning(f"Project '{gitlab_project}' already selected. Deleting it from the list.")
-                dict1 = {'start':item['start'],'end':item['end'],'is_tag':is_tag(item['start'])}
+                if is_tag(item['start']):
+                    dict1 = {'start date':'','end date':'','start tag':item['start'],'end tag':item['end']}
+                else:
+                    dict1 = {'start date':item['start'],'end date':item['end'],'start tag':'','end tag':''}
                 gitlab_projects_selected[level_name][gitlab_group][gitlab_project] = dict1
             else:
                 logger.error(f"Gitlab project '{gitlab_project}' does not exist.")
@@ -159,7 +188,7 @@ def print_in_console_the_gitlab_projects_selected(gitlab_projects_selected):
         return
 
     # pretty print of the list of projects gitlab_projects_selected
-    headers = ['Level','Group','Project Name', 'Start Date', 'End Date']
+    headers = ['Level','Group','Project Name', 'Start date', 'End date', 'Start tag', 'End tag']
 
 # Converting the three-dimensional dictionary to a list of tuples
     table_data = []
@@ -169,14 +198,14 @@ def print_in_console_the_gitlab_projects_selected(gitlab_projects_selected):
         for gitlab_group_name, project in gitlab.items():
             for gitlab_project_name, item in project.items():
                 if 'count_files_modified' in item:
-                    table_data.append((level_name, gitlab_group_name, gitlab_project_name, item['start'], item['end'], item['count_files_modified']))
+                    table_data.append((level_name, gitlab_group_name, gitlab_project_name, item['start date'], item['end date'], item['start tag'], item['end tag'],item['count_files_modified']))
                     count_files_modified_flag = True
                 else:
                     # value is a dictionary with the keys 'start', 'end', 'is_tag'
-                    table_data.append((level_name, gitlab_group_name, gitlab_project_name, item['start'], item['end']))
+                    table_data.append((level_name, gitlab_group_name, gitlab_project_name, item['start date'], item['end date'], item['start tag'], item['end tag']))
 
     if count_files_modified_flag:
-        headers.append('count of files modified')
+        headers.append('count of modifications')
 
     table_str = tabulate(table_data, headers, tablefmt='simple') # grid, simple, plain, pipe, orgtbl, rst, mediawiki, html, latex, latex_raw, latex_booktabs, tsv
 
@@ -210,9 +239,23 @@ def print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_pr
 
 
 def main(args):
-    parser = argparse.ArgumentParser(description="Example script with subarguments")
+    parser = argparse.ArgumentParser(description="Get the changes in the gitlab projects")
 
-    parsed_arguments = parse_arguments(args)
+    session_name,parsed_arguments,list_string,rm_string = parse_arguments(args)
+
+    logger.debug("Connecting to the redmine server")
+    wiki = Wiki_pages_with_Redmine(project_name=REDMINE_PROJECT)
+    logger.debug(wiki) 
+
+    if list_string != "":
+        wiki.delete_wiki_pages(wiki.project_name, list_string, delete=False)
+        return
+    if rm_string != "":
+        wiki.delete_wiki_pages(wiki.project_name, rm_string, delete=False)
+        # ask the user if he is sure to delete the wiki pages above
+        if input("Are you sure to delete the wiki pages above (Y/N)? ") == "Y":
+            wiki.delete_wiki_pages(wiki.project_name, rm_string, delete=True)
+        return
 
     # Get the logger specified in the file
 
@@ -251,6 +294,7 @@ def main(args):
 
 
     branch_name = "develop"
+    filter_modifications_list = ["PkgDef_"]
 
     logger.info(f"----------------------------------------------------")
     logger.info(f"Looking for the modifications by selected project...")
@@ -259,22 +303,26 @@ def main(args):
     for level_name, gitlab_group_name in gitlab_projects_selected.items():
         for gitlab_group_name, project in gitlab_group_name.items():
             for gitlab_project_name, item in project.items():
-                period_list = repo.set_the_period_of_the_project(gitlab_project_name, item['start'], item['end'])
-                modifications_by_file = repo.get_modifications_by_file(gitlab_project_name, branch_name=branch_name, period_list=period_list)
+                period = repo.complete_the_period_of_the_project(gitlab_project_name, item)
+                item['start date'] = period['start date']  
+                item['end date'] = period['end date']    
+                item['start tag'] = period['start tag']
+                item['end tag'] = period['end tag']
 
-                item['count_files_modified'] = str(len(modifications_by_file))
-                item['modifications_by_file'] = modifications_by_file
+                all_modifications = repo.get_modifications_by_file(gitlab_project_name, branch_name=branch_name, period=period)
+                selected_modifications = repo.select_modifications(all_modifications,filter_modifications_list)            
+
+                item['count_files_modified'] = str(len(all_modifications))
+                item['modifications_by_file'] = all_modifications
+                item['selected_modifications'] = selected_modifications
+                item['count_selected_modifications'] = str(len(selected_modifications))
+
         
     print_in_console_the_gitlab_projects_selected(gitlab_projects_selected)
-    print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_projects_selected)
+    #print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_projects_selected)
 
-    #logger.debug("Connecting to the redmine server")
-    #wiki = Wiki_pages_with_Redmine(project_name=REDMINE_PROJECT)
-    #logger.debug(wiki) 
-    #wwp.print_the_modifications_in_the_selected_gitlab_group(wiki,gitlab_projects_selected)
 
-    
-        
+    wwp.print_the_modifications_at_SGS_level(wiki,session_name,repo.gitlab_server,gitlab_projects_selected,filter_modifications_list)
 
 
 if __name__ == '__main__':

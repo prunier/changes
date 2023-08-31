@@ -14,6 +14,8 @@ def is_valid_datetime(input_str):
 # date_time_str1 = "2023-08-21 15:30"
 # date_time_str2 = "2023-08-21 25:30"  # Invalid hour
 # date_time_str3 = "2023-08-21"        # Missing time part
+    if not input_str:
+        return False
     try:
         datetime.strptime(input_str, '%Y-%m-%d %H:%M')
         return True
@@ -91,27 +93,51 @@ class Repos:
         # return the group repos
         return groups
 
+    def select_modifications(self,modifications: dict,filename_contain:list) -> dict:
+
+        selected_modifications = {}
+        for file_path, items in modifications.items():
+            short_filename = os.path.basename(file_path)
+            # [d["diff"], commit.title, commit.author_name, commit.created_at, commit.id]
+            for string in filename_contain:
+                if string in file_path:
+                    selected_modifications[file_path] = items
+                    break
+
+
+        return selected_modifications
+
+
+
     # function that returns the of modifications done on the files in a project withese parameters : gitlab object, project, file path, branch name, since date
-    def get_modifications_by_file(
-        self, gitlab_project_name:str, branch_name: str = BRANCH, period_list: list = [SINCE_DATE, UNTIL_DATE, False]      
-    ):
+    def get_modifications_by_file(self, gitlab_project_name:str, branch_name: str, period:dict):
         project = self.gl.projects.get(gitlab_project_name)
         modifications_by_file = {}
+        
         # get the file commits
         if project.path == "empty":
             return modifications_by_file
 
-        start = period_list[0]
-        end = period_list[1]
-        tag = period_list[2] # True or False
+        start_date = period['start date']
+        end_date = period['end date']
+        start_tag = period['start tag']
+        end_tag = period['end tag'] 
+        use_tag = period['use_tag']
+
+        # return empty dict if no period of time or no tags
+        if not use_tag:
+            if not start_date or not end_date:
+                return modifications_by_file
+        else:
+            if not start_tag or not end_tag:
+                return modifications_by_file
                     
         try:
-            if not tag:
+            if not use_tag:
                 # file_commits = project.commits.list(ref_name=branch_name, since=since_date,all=True)
-                file_commits = project.commits.list(ref_name=branch_name, since=start, until=end, all=True)
-
+                file_commits = project.commits.list(ref_name=branch_name, since=start_date, until=end_date, all=True)
             else:
-                for tag_in_list in period_list[0:1]:
+                for tag_in_list in [start_tag,end_tag]:
                     try:
                         tag_x = project.tags.get(tag_in_list)
                         # Process the tag if found
@@ -122,29 +148,17 @@ class Repos:
                         else:
                             raise  # Re-raise the exception if it's not a 404 error
 
-                tag_1 = project.tags.get(start)
-                tag_2 = project.tags.get(end)
+                tag_1 = project.tags.get(start_tag)
+                tag_2 = project.tags.get(end_tag)
 
                 file_commits = project.commits.list(ref_name=branch_name, since=tag_1.commit["created_at"], until=tag_2.commit["created_at"], all=True)
 
         except Exception as err:
             self.logger.critical(f"Unexpected {err=}, {type(err)=}")
             self.logger.critical(f"project.path={project.path}, branch_name={branch_name}")
-            self.logger.critical(f"start={start}, end={end}")
             return modifications_by_file
 
         # print the file commits
-        self.logger.debug(
-            "Getting the commits in the "
-            + branch_name
-            + " branch since "
-            + start
-            + " until "
-            + end
-            + "of the project "
-            + project.path
-        )
-
 
         for commit in file_commits:
             # self.logger.info(commit.title)
@@ -172,7 +186,12 @@ class Repos:
         latest_tag = ""
         before_latest_tag = ""
 
-        tags = project.tags.list()
+        try:
+            tags = project.tags.list(get_all=True)
+        except Exception as err:
+            self.logger.critical(f"Unexpected {err=}, {type(err)=}")
+            return [tag_full_list,latest_tag, before_latest_tag]    
+        
         logger.debug(f"tags of the project ={tags} in " + project.name)
         for tag in tags:
             commit = tag.commit
@@ -244,39 +263,77 @@ class Repos:
         return table, row_names
     
 
-    def set_the_period_of_the_project(self, gitlab_project_name:str, start:str, end:str) -> list:
+    def complete_the_period_of_the_project(self, gitlab_project_name:str, project_items:dict) -> dict:
             
         project = self.gl.projects.get(gitlab_project_name)
         project_name = project.name
 
+        period = {}            
+        # start and end should be tags (if not empty values)
+        [tag_full_list,latest_tag, before_latest_tag] = self.get_tags(project)
+        tag_short_list = [tag['name'] for tag in tag_full_list]
 
-        period_list = [start,end, False] # default: start date , end date , tag = False
 
-        if is_valid_datetime(start) and is_valid_datetime(end):
-            period_list = [start,end, False]
+        # check if start and end are dates
+        if not is_tag(project_items['start date']):
+            period['use_tag'] = False
+            period['start date'] = project_items['start date']
+            period['end date'] = project_items['end date']
+            period['start tag'] = "-"
+            period['end tag'] = "-"
+
+            # let's identity the tag names that correspond to the start and end dates
+            for tag in tag_full_list:
+                if tag['created_at'] <= project_items['start date']:
+                    period['start tag'] = "> " + tag['name']
+                if tag['created_at'] <= project_items['end date']:
+                    period['end tag'] = "> " + tag['name']
+
         else:
-            
-            # start and end should be tags (if not empty values)
-            [tag_full_list,latest_tag, before_latest_tag] = self.get_tags(project)
-            tag_short_list = [tag['name'] for tag in tag_full_list]
+            period['use_tag'] = True
+            start = project_items['start tag'] 
+            end = project_items['end tag'] 
 
-            if not start:
+            # start and end are empty or are tag names
+            if not start and not end:
                 start = before_latest_tag
-            if not end:
                 end = latest_tag
 
+            if not start and end:
+                # look for the tag before the 'end' tag
+                start = end
+                for tag in tag_short_list:
+                    if tag == end:
+                        start = previous_tag
+                        break
+                    previous_tag = tag
             #check if start is not in the dictionary tag_list and raise an error if it is the case
 
-            if start not in tag_short_list:
-                logger.critical(f"Tag '{start}' does not exist in the project '{project_name}'")
-                raise ValueError(f"Tag '{start}' does not exist in the project '{project_name}'")
-            if end not in tag_short_list:
-                logger.critical(f"Tag '{end}' does not exist in the project '{project_name}'")
-                raise ValueError(f"Tag '{end}' does not exist in the project '{project_name}'")
-        
-            if start and end:
-                # return 2 latest tag names
-                period_list = [start,end, True]
+            if len(tag_short_list) <2:
+                start =  ""
+                end = ""
 
-            
-        return period_list  
+            if len(tag_short_list) >= 2 and start not in tag_short_list:
+                logger.warning(f"Tag '{start}' does not exist in the project '{project_name}'")
+                #raise ValueError(f"Tag '{start}' does not exist in the project '{project_name}'")
+                start = ""
+            if len(tag_short_list) >= 2 and end not in tag_short_list:
+                logger.critical(f"Tag '{end}' does not exist in the project '{project_name}'")
+                #raise ValueError(f"Tag '{end}' does not exist in the project '{project_name}'")
+                end = ""
+
+            period['start tag'] = start
+            period['end tag'] = end
+            # let's identity the dates that correspond to the start and end tags
+            period['start date'] = "-"
+            period['end date'] = "-"
+            for tag in tag_full_list:
+                if start == tag['name']:                    
+                    parsed_date = datetime.strptime(tag['created_at'], "%Y-%m-%dT%H:%M:%S.%f%z")
+                    period['start date'] = parsed_date.strftime("%Y-%m-%dT%H:%M:%S")
+
+                if end == tag['name']:
+                    parsed_date = datetime.strptime(tag['created_at'], "%Y-%m-%dT%H:%M:%S.%f%z")
+                    period['end date'] = parsed_date.strftime("%Y-%m-%dT%H:%M:%S")
+
+        return period 

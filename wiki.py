@@ -92,7 +92,7 @@ class Wiki_pages_with_Redmine:
                     return False
 
                 else:
-                    return True
+                    return wiki_page
 
         return False
 
@@ -108,50 +108,48 @@ class Wiki_pages_with_Redmine:
         project = self.redmine.project.get(self.project_name)  # redmine.project.get('project_identifier')
 
         # Create a new wiki page
-        wiki_page = self.redmine.wiki_page.create(
-            project_id=project.id,
-            title=wiki_page_name,
-            text=wiki_page_content,
-            parent_title=wiki_page_parent,
-            comments=wiki_page_comments,
-            notify=wiki_page_notify,
-        )
+        try:
+            wiki_page = self.redmine.wiki_page.create(
+                project_id=project.id,
+                title=wiki_page_name,
+                text=wiki_page_content,
+                parent_title=wiki_page_parent,
+                comments=wiki_page_comments,
+                notify=wiki_page_notify,
+            )
+        except Exception as err:
+            self.logger.critical(f"Unexpected {err=}, {type(err)=}")
+            return False        
 
-        return wiki_page
-
-    def update_wiki_page(self, wiki_page_name: str, content_to_be_added: str):
-        # Get the project by its identifier or name
-        project = self.redmine.project.get(self.project_name)  # redmine.project.get('project_identifier')
-
-        # Create a new wiki page
-        wiki_page = self.redmine.wiki_page.get(project_id=project.id, resource_id=wiki_page_name)
-
-        # return true if the wiki page is created else return false
         return wiki_page
 
     # function that print a table in a wiki page with four parameters : redmine object, project name, wiki page name and table name
     # if the wiki page is created return true else return false
 
     # function that print a list of data with these parameters : list of data and row names
-    def print_data_table(self, data_list, row_names):
+    def print_data_table(self, data_list, row_names,flag_add_line=True):
         # Print header
-        text = "\n|_. " + " |_. ".join(row_names) + "|\n" if row_names else ""
+        text = "\n{background:gold}. |_. " + " |_. ".join(row_names) + "|\n" if row_names else ""
+        width_table = str(len(row_names))
 
         # Print data rows
+        previous_cell_col1 = ""
         for i, row in enumerate(data_list):
-            text += f"| " + " | ".join(str(cell) for cell in row) + "|\n"
+            if flag_add_line and i > 0 and row[0] != previous_cell_col1:
+                text += "|\\" + width_table + "{background:lightgrey}. |\n"
+            previous_cell_col1 = row[0]
+            text += f"| " + " |".join(str(cell) for cell in row) + "|\n"
 
         return text
 
     def create_table_in_a_new_wiki_page(
-        self, wiki_page_name: str, parent_wiki_page: str, wiki_page_header: str, data: list, row_names: list
-    ):
+        self, wiki_page_name: str, parent_wiki_page: str, wiki_page_header: str, data: list, row_names: list,flag_add_line=True):
         # Example data and row names
         # data = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
         # row_names = ["Row 1", "Row 2", "Row 3"]
 
         # Call the function to print the data table
-        wiki_page_content = wiki_page_header + self.print_data_table(data, row_names)
+        wiki_page_content = wiki_page_header + self.print_data_table(data, row_names,flag_add_line)
 
         # check if the wiki page exist and delete it if exist
         wiki_page_exist = self.check_wiki_page_exist(
@@ -176,20 +174,14 @@ class Wiki_pages_with_Redmine:
 
         # return true if the wiki page is created else return false
         return wiki_page
+    
+    
 
     # function that print a list of data with these parameters : list of data and row names
-    def print_data_table(self, data_list, row_names):
-        # Print header
-        text = "\n|_. " + " |_. ".join(row_names) + "|\n" if row_names else ""
 
-        # Print data rows
-        for i, row in enumerate(data_list):
-            text += f"| " + " | ".join(str(cell) for cell in row) + "|\n"
 
-        return text
-
-    def add_table_in_wiki_page(self, wiki_page_object, wiki_page_header: str, data: list, row_names: list):
-        wiki_page_content = wiki_page_header + self.print_data_table(data, row_names)
+    def add_table_in_wiki_page(self, wiki_page_object, wiki_page_header: str, data: list, row_names: list,flag_add_line=True):
+        wiki_page_content = wiki_page_header + self.print_data_table(data, row_names,flag_add_line)
 
         # update the existing wiki page and add the table inside
         if wiki_page_object:
