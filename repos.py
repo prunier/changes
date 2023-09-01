@@ -162,7 +162,12 @@ class Repos:
 
         for commit in file_commits:
             # self.logger.info(commit.title)
-            diff = commit.diff(all=True)
+            try:
+                diff = commit.diff(all=True)
+            except Exception as err:
+                self.logger.critical(f"Unexpected {err=}, {type(err)=}")
+                self.logger.critical(f"project.path={project.path}, branch_name={branch_name}")
+                return modifications_by_file
             for d in diff:
                 file_path = d["new_path"]
                 # self.logger.info(d["new_path"])
@@ -302,6 +307,7 @@ class Repos:
             if not start and end:
                 # look for the tag before the 'end' tag
                 start = end
+                previous_tag = ""
                 for tag in tag_short_list:
                     if tag == end:
                         start = previous_tag

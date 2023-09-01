@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta
+import os
+import sys
 from log_config import logger
+from wiki import REDMINE_PROJECT, Wiki_pages_with_Redmine
 
 
 PREFIX_WIKI_PAGE = "Changes"
@@ -8,6 +11,40 @@ TOP_PARENT_WIKI_PAGE = "Files_modified_in_projects"
 SINCE_DATE = "2023-06-09 15:00"
 UNTIL_DATE = "2023-06-14 14:00"
 
+CURRENT_DATE = datetime.now()
+LAST_WEEK_DATE = CURRENT_DATE - timedelta(days=7)
+LAST_MONTH_DATE = CURRENT_DATE - timedelta(days=30)
+LAST_YEAR_DATE = CURRENT_DATE - timedelta(days=365)
+LAST_3MONTHS_DATE = CURRENT_DATE - timedelta(days=92)
+
+WIKI_PAGE_HEADER_SGS_LEVEL = """
+{background:lightgrey}. |_. Color |_. Tag created before...|
+|{background:red}. Red| this week |
+|{background:orange}. Orange| this month | 
+|{background:yellow}. Yellow | the last three months |
+|{background:lightgrey}. Grey | this year|
+
+
+{background:lightgrey}. |_. Color |_. Description|
+|{background:lightgreen}. Green| Specific files modified (see below) |
+
+
+*Selected modifications*: count of modified files which name contains one of the following strings: *"""
+
+
+def execute_the_list_or_rm_wiki_pages_options_and_quit (list_string:str,rm_string:str):
+
+    wiki = Wiki_pages_with_Redmine(project_name=REDMINE_PROJECT)
+
+    if list_string != "":
+        wiki.delete_wiki_pages(wiki.project_name, list_string, delete=False)
+        sys.exit()
+    if rm_string != "":
+        wiki.delete_wiki_pages(wiki.project_name, rm_string, delete=False)
+        # ask the user if he is sure to delete the wiki pages above
+        if input("Are you sure to delete the wiki pages above (Y/N)? ") == "Y":
+            wiki.delete_wiki_pages(wiki.project_name, rm_string, delete=True)
+        sys.exit()
 
 
 def try_parse_date(date_string):
@@ -57,39 +94,47 @@ def print_the_modifications_at_project_level(gitlab_projects_selected,level_name
 
     return headers,table
 
+def tag_colored (tag:str, date:str) -> str:
+    # add redmine color depending of the tag date
+    et = tag
+    if tag and ">" not in tag:
+        edt = try_parse_date(date)
+        if not edt:
+            logger.error(f"Unable to parse the value 'end_date' '{date}' with any of the formats")
+        else:
+            if edt > LAST_YEAR_DATE:
+                et = "{background:lightgrey}. " + tag
+            if edt > LAST_3MONTHS_DATE:
+                et = "{background:yellow}. " + tag
+            if edt > LAST_MONTH_DATE:
+                et = "{background:orange}. " + tag
+            if edt > LAST_WEEK_DATE:
+                et = "{background:red}. " + tag 
 
-def print_the_modifications_at_SGS_level(wiki,session_name:str,gitlab_server:str,gitlab_projects_selected,filter_modifications_list):
+    return et
+
+def print_the_modifications_at_SGS_level(session_name:str,gitlab_projects_selected,filter_modifications_list):
 
     if len(gitlab_projects_selected) == 0:
         return
 
+    gitlab_server = os.environ.get("GITLAB_SERVER")
+    logger.debug (f"gitlab server: {gitlab_server}")
+    # connect to the redmine server
+    
+    wiki = Wiki_pages_with_Redmine(project_name=REDMINE_PROJECT)
+    logger.debug (f"wiki server: {wiki}")
+
+
     output_wiki_page_name = PREFIX_WIKI_PAGE + "_" + session_name
-    wiki_page_header = f"\n\nh2. Count of modifications in files" + "\n\n\n"
-    wiki_page_header += """
-{background:lightgrey}. |_. Color |_. Tag created before...|
-|{background:red}. Red| this week |
-|{background:orange}. Orange| this month | 
-|{background:yellow}. Yellow | the last three months |
-|{background:lightgrey}. Grey | this year|
-
-
-{background:lightgrey}. |_. Color |_. Description|
-|{background:lightgreen}. Green| Specific files modified (see below) |
-
-
-*Selected modifications*: count of modifications done on the files which name contains one of the following strings: *"""
+    wiki_page_header = f"\n\nh2. Count of modified files" + "\n\n\n"
+    wiki_page_header += WIKI_PAGE_HEADER_SGS_LEVEL
     wiki_page_header += ", ".join(filter_modifications_list) + "*\n\n\n"
 
     output_wki_object = wiki.create_table_in_a_new_wiki_page(output_wiki_page_name, TOP_PARENT_WIKI_PAGE, wiki_page_header, [], [])
 
     # pretty print of the list of projects gitlab_projects_selected
-    headers = ['Group','Project Name', 'Start date', 'End date','Start tag','End tag','# modifications','# selected modifications']
-
-    current_date = datetime.now()
-    last_week_date = current_date - timedelta(days=7)
-    last_month_date = current_date - timedelta(days=30)
-    last_year_date = current_date - timedelta(days=365)
-    last_3months_date = current_date - timedelta(days=92)
+    headers = ['Group','Project Name', 'Start date', 'End date','Start tag','End tag','# modified files','# selected files']
 
     count_files_modified_flag = False
 
@@ -123,7 +168,7 @@ def print_the_modifications_at_SGS_level(wiki,session_name:str,gitlab_server:str
                     count_of_selected_changes = int(item['count_selected_modifications'])
 
                     if count_of_selected_changes > 0:
-                        wiki_page_header = f"\n\n*Selected modifications*: count of modifications done on the files which name contains one of the following strings:*{filter_modifications_list}*\n\n\n"   
+                        wiki_page_header = f"\n\n*Selected modifications*: count of modified files which name contains one of the following strings:*{filter_modifications_list}*\n\n\n"   
                         wiki.add_table_in_wiki_page(output_wki_gitlab_object, wiki_page_header, project_table_s, project_headers_s,flag_add_line=False)             
 
                         count_of_selected_changes = "{background:lightgreen}. "  + "[[" + wiki_page_gitlab_name + "#"+ gitlab_project_name + "|" + str(item['count_selected_modifications']) + "]]"
@@ -131,23 +176,11 @@ def print_the_modifications_at_SGS_level(wiki,session_name:str,gitlab_server:str
                     gn = '"' + gitlab_group_name + '":' + gitlab_server + "/" + gitlab_group_name    
                     pn = '"' + gitlab_project_name + '":' + gitlab_server + "/" + gitlab_project_name
                     # compare dates if the start tag does not contain ">" so start_date matches exactly with a tag
-                    et = item['end tag'] 
-                    if ">" not in item['end tag']:
-                        edt = try_parse_date(item['end date'])
-                        if not edt:
-                            logger.error(f"Unable to parse the value 'end_date' '{item['end date']}' with any of the formats")
-                        else:
-                            if edt > last_year_date:
-                                et = "{background:lightgrey}. " + item['end tag']
-                            if edt > last_3months_date:
-                                et = "{background:yellow}. " + item['end tag']
-                            if edt > last_month_date:
-                                et = "{background:orange}. " + item['end tag']
-                            if edt > last_week_date:
-                                et = "{background:red}. " + item['end tag']                  
+ 
+                    et = tag_colored(item['end tag'], item['end date'])
+                 
 
                     table_data.append((gn, pn, item['start date'], item['end date'], item['start tag'], et,str(count_of_changes),str(count_of_selected_changes)))
 
         wiki_page_header = (f"\n\nh2. {level_name} \n\n\nCount of modifications in files\n\n\n")
         output_wki_object = wiki.add_table_in_wiki_page(output_wki_object, wiki_page_header, table_data, headers)
-

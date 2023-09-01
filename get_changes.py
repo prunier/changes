@@ -1,45 +1,59 @@
-import argparse
+import json
+import os
 import pprint
+import sys
 import yaml
 
 from tabulate import tabulate
 from log_config import logger
 from collections import defaultdict
-
+from plot import plot_my_3d_data
 
 from repos import Repos,is_tag
-from wiki import REDMINE_PROJECT, Wiki_pages_with_Redmine
-import write_wiki_pages as wwp
+import write_wiki_pages
 
 
 def parse_arguments(args):
 
-    arguments = iter(args)
     result = []
 
     session_name = "current"
     list_string = ""
     rm_string = ""
+    input_filename = ""
+    save_in_wiki_pages = False
 
-    if args[0] in ("--session"):
+
+    if args and args[0] in ("--load"):
+        input_filename = args[1]
+        session_name = os.path.splitext(input_filename)[0]
+        args.pop(0)
+        args.pop(0)
+        if args and args[0] in ("--save_in_wiki"):
+            save_in_wiki_pages = True
+            args.pop(0)
+
+
+    if args and args[0] in ("--session"):
         session_name = args[1]
         args.pop(0)
         args.pop(0)
+        if args and args[0] in ("--save_in_wiki"):
+            save_in_wiki_pages = True
+            args.pop(0)
 
-    if args[0] in ("--list"):
+    if args and args[0] in ("--list"):
         list_string = args[1]
         args.pop(0)
         args.pop(0)
-        return session_name,result,list_string,rm_string
 
 
-    if args[0] in ("--rm"):
+    if args and args[0] in ("--rm"):
         rm_string = args[1]
         args.pop(0)
         args.pop(0)
-        return session_name,result,list_string,rm_string
 
-
+    arguments = iter(args)
 
     for arg in arguments:
         if arg in ("-p", "--project"):
@@ -56,7 +70,7 @@ def parse_arguments(args):
         elif arg in ("-e", "--end"):
             item["end"] = next(arguments)
 
-    return session_name,result,list_string,rm_string
+    return input_filename,session_name,result,list_string,rm_string,save_in_wiki_pages
 
 def load_SGS_gitlab_groups(input_yaml_file: str) -> dict:
     with open(input_yaml_file, "r") as f:
@@ -108,8 +122,6 @@ def dictionalry_3d_empty(three_dimensional_dict,i,j,k):
     else:
         #print(f"The cell ({i}, {j}, {k}) does not exist in the three-dimensional dictionary.")
         return True
-
-
 
 
 def get_gitlab_projects(parsed_arguments,repo, SGS_gitlab_groups):
@@ -238,30 +250,40 @@ def print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_pr
                     print(table_str)
 
 
-def main(args):
-    parser = argparse.ArgumentParser(description="Get the changes in the gitlab projects")
+def save_data_in_json_format(session_name:str, data):
+    # Specify the output CSV file path
+    output_file_path = f"{session_name}.json"
 
-    session_name,parsed_arguments,list_string,rm_string = parse_arguments(args)
+    with open(output_file_path, 'w') as json_file:
+        json.dump(data, json_file, indent=4)
 
-    logger.debug("Connecting to the redmine server")
-    wiki = Wiki_pages_with_Redmine(project_name=REDMINE_PROJECT)
-    logger.debug(wiki) 
+    logger.info(f'Data has been stored in {output_file_path}')
 
-    if list_string != "":
-        wiki.delete_wiki_pages(wiki.project_name, list_string, delete=False)
-        return
-    if rm_string != "":
-        wiki.delete_wiki_pages(wiki.project_name, rm_string, delete=False)
-        # ask the user if he is sure to delete the wiki pages above
-        if input("Are you sure to delete the wiki pages above (Y/N)? ") == "Y":
-            wiki.delete_wiki_pages(wiki.project_name, rm_string, delete=True)
-        return
+    return output_file_path
 
-    # Get the logger specified in the file
 
-    logger.debug("Starting the main program")
-    logger.info("Starting changes")
+def load_data_from_json_format(input_file_path:str):
+    # Initialize an empty dictionary to store the data
+    loaded_data = {}
 
+    # Load data from the JSON file
+    try:
+        with open(input_file_path, 'r') as json_file:
+            loaded_data = json.load(json_file)
+        logger.info(f'Data has been loaded from {input_file_path}')
+    except FileNotFoundError:
+        logger.critical(f'File not found: {input_file_path}')
+
+    return loaded_data
+
+def get_modifications_from_input_arguments (session_name:str,parsed_arguments,filter_modifications_list:list):
+
+    gitlab_projects_selected = {}
+    if len(parsed_arguments) == 0:
+        logger.error("No input arguments for getting the modifications in gitlab")
+        sys.exit()
+
+       # load the SGS gitlab groups
     logger.debug("Loading the SGS gitlab groups")
     SGS_gitlab_groups = load_SGS_gitlab_groups("SGS_gitlab_groups.yaml")
 
@@ -294,7 +316,6 @@ def main(args):
 
 
     branch_name = "develop"
-    filter_modifications_list = ["PkgDef_"]
 
     logger.info(f"----------------------------------------------------")
     logger.info(f"Looking for the modifications by selected project...")
@@ -317,14 +338,33 @@ def main(args):
                 item['selected_modifications'] = selected_modifications
                 item['count_selected_modifications'] = str(len(selected_modifications))
 
-        
-    print_in_console_the_gitlab_projects_selected(gitlab_projects_selected)
-    #print_in_console_the_modifications_in_the_selected_gitlab_projects(gitlab_projects_selected)
+    return gitlab_projects_selected  
+
+def main(args):
+    #parser = argparse.ArgumentParser(description="Get the changes in the gitlab projects")
+
+    logger.debug("Starting the main program")
+    logger.info("Starting changes")
+
+    filter_modifications_list = ["PkgDef_"]
+    input_filename,session_name,parsed_arguments,list_string,rm_string,save_in_wiki_pages = parse_arguments(args)
+
+    # execute possibly the rm or list wiki options
+    write_wiki_pages.execute_the_list_or_rm_wiki_pages_options_and_quit (list_string,rm_string)
+
+    if input_filename:
+        data = load_data_from_json_format(input_filename)
+    else:
+        data = get_modifications_from_input_arguments (session_name,parsed_arguments,filter_modifications_list)
+        file_output_name = save_data_in_json_format(session_name,data)
+
+    if save_in_wiki_pages:
+        write_wiki_pages.print_the_modifications_at_SGS_level(session_name,data,filter_modifications_list)
 
 
-    wwp.print_the_modifications_at_SGS_level(wiki,session_name,repo.gitlab_server,gitlab_projects_selected,filter_modifications_list)
+    print_in_console_the_gitlab_projects_selected(data)
+    plot_my_3d_data(session_name,data)
 
 
 if __name__ == '__main__':
-    import sys
     main(sys.argv[1:])

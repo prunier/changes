@@ -3,3 +3,4 @@ pyyaml
 python-redmine
 pprint
 tabulate
+mathplotlib

@@ -187,7 +187,12 @@ class Wiki_pages_with_Redmine:
         if wiki_page_object:
             self.logger.debug(f"wiki page {wiki_page_object.title} will be updated")
             wiki_page_object.text += wiki_page_content
-            wiki_page_object.save()
+            try:
+                wiki_page_object.save()
+            except Exception as err:
+                self.logger.critical(f"Unexpected {err=}, {type(err)=}")
+                return False
+            
             self.logger.info("Wiki page " + wiki_page_object.title + " updated")
 
         # if the acces is not ok

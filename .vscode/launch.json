@@ -10,6 +10,22 @@
         "console": "integratedTerminal"
       },
       {
+        "name": "all the levels of the SGS since the launch",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/get_changes.py",
+        "args": ["--session","SGS_launch","--level", "SGS","-s","2023-07-01 17:00", "-e","2023-08-31 20:00"],
+        "console": "integratedTerminal"
+      },
+      {
+        "name": " simple",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/get_changes.py",
+        "args": ["--load","current.json"],
+        "console": "integratedTerminal"
+      },
+      {
         "name": " levels LE1,LE2",
         "type": "python",
         "request": "launch",
@@ -42,11 +58,11 @@
         "console": "integratedTerminal"
       },
       {
-        "name": "project LE1_VIS_Validation",
+        "name": "project LE1_NISP_Validation",
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","current","-p","PF-LE1/LE1_VIS","-s","2023-06-09 09:00", "-e","2023-08-10 09:00"],
+        "args": ["--session","current","--save_in_wiki","-p","PF-LE1/LE1_NISP_Validation"],
         "console": "integratedTerminal"
       },
       {
@@ -118,9 +134,10 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB9","-g","PF-MER","-s","2023-06-09 09:00", "-e","2023-08-23 15:00","-g","PF-VIS","-s","13.0.14", "-e","13.0.16","-g","PF-NIR","-s","2.4.1", "-e","2.4.3"],
+        "args": ["--session","CCB9","-g","PF-VIS","-s","13.0.14", "-e","13.0.16","-g","PF-NIR","-s","2.4.1", "-e","2.4.3"],
         "console": "integratedTerminal"
       },
+      
       {
         "name": "rm",
         "type": "python",
