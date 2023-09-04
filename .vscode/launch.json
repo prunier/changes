@@ -22,7 +22,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--load","current.json"],
+        "args": ["--load","latest.json","--save_in_wiki"],
         "console": "integratedTerminal"
       },
       {

@@ -5,10 +5,10 @@ import sys
 import yaml
 
 from tabulate import tabulate
+import common
 from log_config import logger
 from collections import defaultdict
-from plot import plot_my_3d_data
-
+import plot 
 from repos import Repos,is_tag
 import write_wiki_pages
 
@@ -324,11 +324,15 @@ def get_modifications_from_input_arguments (session_name:str,parsed_arguments,fi
     for level_name, gitlab_group_name in gitlab_projects_selected.items():
         for gitlab_group_name, project in gitlab_group_name.items():
             for gitlab_project_name, item in project.items():
-                period = repo.complete_the_period_of_the_project(gitlab_project_name, item)
+                # start and end should be tags (if not empty values)
+                [tag_full_list,latest_tag, before_latest_tag] = repo.get_tags(gitlab_project_name)
+                period = repo.complete_the_period_of_the_project(gitlab_project_name, item,tag_full_list,latest_tag, before_latest_tag)
                 item['start date'] = period['start date']  
                 item['end date'] = period['end date']    
                 item['start tag'] = period['start tag']
                 item['end tag'] = period['end tag']
+
+                tags_in_period = repo.get_tags_in_period(tag_full_list, period)
 
                 all_modifications = repo.get_modifications_by_file(gitlab_project_name, branch_name=branch_name, period=period)
                 selected_modifications = repo.select_modifications(all_modifications,filter_modifications_list)            
@@ -337,6 +341,8 @@ def get_modifications_from_input_arguments (session_name:str,parsed_arguments,fi
                 item['modifications_by_file'] = all_modifications
                 item['selected_modifications'] = selected_modifications
                 item['count_selected_modifications'] = str(len(selected_modifications))
+
+                item['tags_in_period'] = tags_in_period
 
     return gitlab_projects_selected  
 
@@ -353,17 +359,24 @@ def main(args):
     write_wiki_pages.execute_the_list_or_rm_wiki_pages_options_and_quit (list_string,rm_string)
 
     if input_filename:
-        data = load_data_from_json_format(input_filename)
+        modifications = load_data_from_json_format(input_filename)
     else:
-        data = get_modifications_from_input_arguments (session_name,parsed_arguments,filter_modifications_list)
-        file_output_name = save_data_in_json_format(session_name,data)
+        modifications = get_modifications_from_input_arguments (session_name,parsed_arguments,filter_modifications_list)
+        file_output_name = save_data_in_json_format(session_name,modifications)
+
+
+    start_tag_date,end_tag_date,tag_by_level = common.get_the_tags_in_the_period_at_SGS_level(modifications)
+    tags_by_period = common.get_the_tags_by_period(modifications,start_tag_date,end_tag_date)
+
 
     if save_in_wiki_pages:
-        write_wiki_pages.print_the_modifications_at_SGS_level(session_name,data,filter_modifications_list)
+        #write_wiki_pages.print_the_modifications_at_SGS_level(session_name,data,filter_modifications_list)
+        write_wiki_pages.print_the_tags (session_name,tag_by_level,tags_by_period)
 
 
-    print_in_console_the_gitlab_projects_selected(data)
-    plot_my_3d_data(session_name,data)
+    print_in_console_the_gitlab_projects_selected(modifications)
+    plot.plot_modifications (session_name,modifications)
+    plot.plot_tags(session_name,tags_by_period)
 
 
 if __name__ == '__main__':

@@ -1,22 +1,15 @@
 # debug
+from time import strptime
+from matplotlib import dates
 import matplotlib.pyplot as plt
+from datetime import datetime
 from collections import defaultdict
+from log_config import logger
 
-# # Créer un tableau en 3 dimensions basé sur defaultdict
-# data = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
-
-# # Ajouter des valeurs au tableau (exemple)
-# data[1][1][1] = 10
-# data[1][1][2] = 20
-# data[1][2][1] = 30
-# data[2][1][1] = 40
-
-# Calculer la somme des z par x et par y
-
-def plot_my_3d_data(session_name:str, data:defaultdict):
+def plot_modifications(session_name:str, data:defaultdict):
 
 
-    plot_filename = f"{session_name}.png"
+    plot_filename = f"{session_name}_modifications.png"
     # Define colors for each group
     colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
 
@@ -48,7 +41,51 @@ def plot_my_3d_data(session_name:str, data:defaultdict):
 
     # Display the plot
     plt.tight_layout()
-    plt.show()
+    #plt.show()
 
     # sauvegarder dans un fichier
     plt.savefig(plot_filename)
+    logger.info(f"the plot has been stored in {plot_filename}")
+
+def plot_tags(session_name:str,dict_of_list):
+
+    plot_filename = f"{session_name}_tags.png"
+
+    # transform text time dta into datetime format
+    date_strings = sorted(list(dict_of_list.keys()))
+    #for  date_string in dict_of_list.keys():
+    #    date_data = try_parse_date(date_string)
+    #    x_values.append(date_data)
+
+    data_values = []
+    for x_data_dict in date_strings:
+        count_in_dict = len(dict_of_list[x_data_dict])
+        data_values.append(count_in_dict)
+
+    # Convert date strings to datetime objects
+    dates = [datetime.strptime(date, '%Y-%m-%d') for date in date_strings]
+
+    # Create a line plot
+    plt.figure(figsize=(10, 5))  # Adjust figure size as needed
+    plt.plot(dates, data_values, marker='o', linestyle='-', label='Time Series Data', color='blue')
+
+    # Customize the plot
+    plt.xlabel('Date')
+    plt.ylabel('#tags')
+    plt.title('Count of tags by month')
+    plt.legend()
+
+    # Format the x-axis date labels (optional)
+    plt.gca().xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%Y-%m-%d'))
+
+    # Rotate x-axis labels (optional)
+    plt.xticks(rotation=45)
+
+    # Display the plot
+    plt.tight_layout()  # Ensures labels are not cut off
+    plt.grid(True)  # Add grid lines (optional)
+    #plt.show()
+
+    # sauvegarder dans un fichier
+    plt.savefig(plot_filename)
+    logger.info(f"the plot has been stored in {plot_filename}")

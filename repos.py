@@ -185,11 +185,13 @@ class Repos:
         # return of file commits
         return modifications_by_file
 
-    def get_tags(self, project) -> list:
+    def get_tags(self, gitlab_project_name:str) -> list:
 
         tag_full_list=[]
         latest_tag = ""
         before_latest_tag = ""
+
+        project = self.gl.projects.get(gitlab_project_name)
 
         try:
             tags = project.tags.list(get_all=True)
@@ -222,6 +224,25 @@ class Repos:
         logger.debug(f"tag_short_list= {tag_short_list}, latest_tag ={latest_tag} and before_latest_tag={before_latest_tag} in " + project.name)
         return [tag_full_list,latest_tag, before_latest_tag]
     
+
+    def get_tags_in_period(self,tag_full_list:list, period:list)-> list :
+
+        tags_in_period = []
+        # reminder: prefix the tag name with "> " when the start or end date is after the tag creation
+        start_tag = period['start tag'].replace("> ","")
+        end_tag = period['end tag'].replace("> ","")
+
+        in_the_period = False
+        for tag in tag_full_list:
+            if tag['name'] == start_tag:
+                in_the_period = True
+            if in_the_period:
+                tags_in_period.append(tag)
+            if tag['name'] == end_tag:
+                in_the_period = False
+
+        logger.debug(f"Tags in the period = {tags_in_period}")
+        return tags_in_period
 
     # function that get all the files of a gitlab project with two parameters : gitlab object and project name
     def list_files_in_subdirectories(self, project, file_path='', branch_name: str = BRANCH):
@@ -268,16 +289,10 @@ class Repos:
         return table, row_names
     
 
-    def complete_the_period_of_the_project(self, gitlab_project_name:str, project_items:dict) -> dict:
+    def complete_the_period_of_the_project(self, project_name:str, project_items:dict,tag_full_list:list,latest_tag:str, before_latest_tag:str) -> dict:
             
-        project = self.gl.projects.get(gitlab_project_name)
-        project_name = project.name
-
         period = {}            
-        # start and end should be tags (if not empty values)
-        [tag_full_list,latest_tag, before_latest_tag] = self.get_tags(project)
         tag_short_list = [tag['name'] for tag in tag_full_list]
-
 
         # check if start and end are dates
         if not is_tag(project_items['start date']):
@@ -288,6 +303,7 @@ class Repos:
             period['end tag'] = "-"
 
             # let's identity the tag names that correspond to the start and end dates
+            # WARNING: prefix the tag name with "> " when the start or end date is after the tag creation
             for tag in tag_full_list:
                 if tag['created_at'] <= project_items['start date']:
                     period['start tag'] = "> " + tag['name']

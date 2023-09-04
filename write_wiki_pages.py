@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import os
 import sys
+from common import try_parse_date
 from log_config import logger
 from wiki import REDMINE_PROJECT, Wiki_pages_with_Redmine
 
@@ -45,21 +46,6 @@ def execute_the_list_or_rm_wiki_pages_options_and_quit (list_string:str,rm_strin
         if input("Are you sure to delete the wiki pages above (Y/N)? ") == "Y":
             wiki.delete_wiki_pages(wiki.project_name, rm_string, delete=True)
         sys.exit()
-
-
-def try_parse_date(date_string):
-    # List of potential formats to try
-    potential_formats = [
-        '%Y-%m-%dT%H:%M:%S',
-        '%Y-%m-%d %H:%M'
-    ]
-
-    for format in potential_formats:
-        try:
-            return datetime.strptime(date_string, format)
-        except ValueError:
-            pass
-    return None
 
 
 def print_the_modifications_at_project_level(gitlab_projects_selected,level_name,gitlab_group_name,gitlab_project,selection_modifications=False):
@@ -126,11 +112,11 @@ def print_the_modifications_at_SGS_level(session_name:str,gitlab_projects_select
     logger.debug (f"wiki server: {wiki}")
 
 
+
     output_wiki_page_name = PREFIX_WIKI_PAGE + "_" + session_name
     wiki_page_header = f"\n\nh2. Count of modified files" + "\n\n\n"
     wiki_page_header += WIKI_PAGE_HEADER_SGS_LEVEL
     wiki_page_header += ", ".join(filter_modifications_list) + "*\n\n\n"
-
     output_wki_object = wiki.create_table_in_a_new_wiki_page(output_wiki_page_name, TOP_PARENT_WIKI_PAGE, wiki_page_header, [], [])
 
     # pretty print of the list of projects gitlab_projects_selected
@@ -184,3 +170,40 @@ def print_the_modifications_at_SGS_level(session_name:str,gitlab_projects_select
 
         wiki_page_header = (f"\n\nh2. {level_name} \n\n\nCount of modifications in files\n\n\n")
         output_wki_object = wiki.add_table_in_wiki_page(output_wki_object, wiki_page_header, table_data, headers)
+
+
+
+
+def print_the_tags(session_name:str,tags_by_level:dict, tags_by_period:dict):
+
+    start_tag_date = ""
+    end_tag_date = ""
+    if len(tags_by_level) == 0:
+        return 
+    
+    # connect to the redmine server    
+    wiki = Wiki_pages_with_Redmine(project_name=REDMINE_PROJECT)
+
+    output_wiki_page_name = PREFIX_WIKI_PAGE + "_" + session_name + "_tags"
+    wiki_page_header = f"\n\nh2. Tags in the period" + "\n\n\n"
+    output_wki_object = wiki.create_table_in_a_new_wiki_page(output_wiki_page_name, TOP_PARENT_WIKI_PAGE, wiki_page_header, [], [])
+
+    # pretty print of the list of the tags
+    headers = ['Group','Project Name', 'tag', 'Creation date','Author']
+
+    for level_name, table_data in tags_by_level.items():
+        wiki_page_header = f"\n\nh3. {level_name} \n\n\n"
+        wiki.add_table_in_wiki_page(output_wki_object, wiki_page_header, table_data, headers,flag_add_line=True)
+
+    wiki_page_header = f"\n\nh2. Tags by month in the period" + "\n\n\n"
+    headers = ['Date','tag','Creation date','Author'] #, 'Creation date','Author']
+
+    table_data = []
+    for date,tags in tags_by_period.items():
+        if len(tags):
+            for t in tags:
+                table_data.append((date,t['name'],t['created_at'],t['author_name']))
+        else:
+            table_data.append((date,"-","-","-"))
+
+    wiki.add_table_in_wiki_page(output_wki_object, wiki_page_header, table_data, headers,flag_add_line=True)
