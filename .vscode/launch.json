@@ -22,7 +22,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--load","latest.json","--save_in_wiki"],
+        "args": ["--load","current.json","--save_in_wiki"],
         "console": "integratedTerminal"
       },
       {
@@ -70,7 +70,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","current","-p","PF-LE1/LE1_VIS","-s","2023-06-09 09:00", "-e","2023-08-10 09:00","-p","PF-NIR/NIR_DarkBiasSubtraction","-s","2022-07-09 09:00", "-e","2023-07-29 09:00","-p","PF-NIR/NIR_IAL_Pipelines","-s","2022-08-09 09:00", "-e","2023-08-29 09:00"],
+        "args": ["--session","current","--save_in_wiki","-p","PF-LE1/LE1_VIS","-s","2023-06-09 09:00", "-e","2023-08-10 09:00","-p","PF-NIR/NIR_DarkBiasSubtraction","-s","2022-07-09 09:00", "-e","2023-07-29 09:00","-p","PF-NIR/NIR_IAL_Pipelines","-s","2022-08-09 09:00", "-e","2023-08-29 09:00"],
         "console": "integratedTerminal"
       },
       {
@@ -78,7 +78,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB2","-p","ST-EAS/ST_EASeuclid","-s","0.9.8", "-e","0.9.9","-p","ST-DM/ST_DataModel","-s","9.1.5","-e","9.2.0"],
+        "args": ["--session","CCB2","--save_in_wiki","-p","ST-EAS/ST_EASeuclid","-s","0.9.8", "-e","0.9.9","-p","ST-DM/ST_DataModel","-s","9.1.5","-e","9.2.0"],
         "console": "integratedTerminal"
       },
       {
@@ -86,7 +86,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB3","-g","PF-EXT","-s","","-e","0.9.0"],
+        "args": ["--session","CCB3","--save_in_wiki","-g","PF-EXT","-s","","-e","0.9.0"],
         "console": "integratedTerminal"
       },
       {
@@ -94,7 +94,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB4","-g","ST-IAL","-s","", "-e","3.2.0"],
+        "args": ["--session","CCB4","--save_in_wiki","-g","ST-IAL","-s","", "-e","3.2.0"],
         "console": "integratedTerminal"
       },
       {
@@ -102,7 +102,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB5","-g","ST-EAS","-s","", "-e","1.0.0","-g","PF-VIS","-s","", "-e","13.0.6","-p","PF-EXT/ext_pf1_gen_p2","-s","", "-e","0.9.1"],
+        "args": ["--session","CCB5","--save_in_wiki","-g","ST-EAS","-s","", "-e","1.0.0","-g","PF-VIS","-s","", "-e","13.0.6","-p","PF-EXT/ext_pf1_gen_p2","-s","", "-e","0.9.1"],
         "console": "integratedTerminal"
       },
       {
@@ -110,7 +110,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB6","-g","PF-NIR","-s","", "-e","2.3.1","-g","PF-VIS","-s","13.0.6", "-e","13.0.10","-g","ST-EAS","-s","", "-e","1.0.0"],
+        "args": ["--session","CCB6","--save_in_wiki","-g","PF-NIR","-s","", "-e","2.3.1","-g","PF-VIS","-s","13.0.6", "-e","13.0.10","-g","ST-EAS","-s","", "-e","1.0.0"],
         "console": "integratedTerminal"
       },
       {
@@ -118,7 +118,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB7","-g","PF-SIR","-s","2023-06-09 09:00", "-e","2023-08-16 15:00","-g","PF-VIS","-s","13.0.10", "-e","13.0.12","-p","ST-EAS/ST_EASDSS","-s","0.7.17", "-e","0.7.18"],
+        "args": ["--session","CCB7","--save_in_wiki","-g","PF-SIR","-s","2023-06-09 09:00", "-e","2023-08-16 15:00","-g","PF-VIS","-s","13.0.10", "-e","13.0.12","-p","ST-EAS/ST_EASDSS","-s","0.7.17", "-e","0.7.18"],
         "console": "integratedTerminal"
       },
       {
@@ -126,7 +126,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB8","-g","PF-MER","-s","2023-06-09 09:00", "-e","2023-08-23 15:00","-g","PF-VIS","-s","13.0.12", "-e","13.0.14","-g","PF-NIR","-s","2.3.1", "-e","2.4.1"],
+        "args": ["--session","CCB8","--save_in_wiki","-g","PF-MER","-s","2023-06-09 09:00", "-e","2023-08-23 15:00","-g","PF-VIS","-s","13.0.12", "-e","13.0.14","-g","PF-NIR","-s","2.3.1", "-e","2.4.1"],
         "console": "integratedTerminal"
       },
       {
@@ -134,7 +134,7 @@
         "type": "python",
         "request": "launch",
         "program": "${workspaceFolder}/get_changes.py",
-        "args": ["--session","CCB9","-g","PF-VIS","-s","13.0.14", "-e","13.0.16","-g","PF-NIR","-s","2.4.1", "-e","2.4.3"],
+        "args": ["--session","CCB9","--save_in_wiki","-g","PF-VIS","-s","13.0.14", "-e","13.0.16","-g","PF-NIR","-s","2.4.1", "-e","2.4.3"],
         "console": "integratedTerminal"
       },
       
