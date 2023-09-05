@@ -3,6 +3,7 @@
 from redminelib import Redmine
 from log_config import logger
 import os
+import common
 
 REDMINE_PROJECT = "maturity-assessment"
 PARENT_WIKI_PAGE = "Changes"
@@ -174,6 +175,30 @@ class Wiki_pages_with_Redmine:
 
         # return true if the wiki page is created else return false
         return wiki_page
+    
+    def add_file_in_wiki_page_object(self,wiki_page_object,file_paths:list,header_line="{{>toc}}",width_image="width:800px"):
+
+       if wiki_page_object:
+            self.logger.debug(f"wiki page {wiki_page_object.title} will be updated")
+            try:
+                paths = []
+                info_image = ""
+                for file_path in file_paths:
+                    filename = os.path.basename(file_path)
+                    paths.append({'path': file_path, 'filename': filename})
+                    if ".png" in filename:
+                        info_image +="\n!{"+ width_image + "}" + f"{filename}!"
+                wiki_page_object.uploads = paths
+                previous_contents = wiki_page_object.text
+                previous_contents = previous_contents.replace(header_line,f"{header_line}\n\n{info_image}\n\n")
+                wiki_page_object.text = previous_contents + "\n\nupdated on " + str(common.CURRENT_DATE) + "\n"
+
+                wiki_page_object.save()
+            except Exception as err:
+                self.logger.critical(f"Unexpected {err=}, {type(err)=}")
+                return False
+            
+            self.logger.info("Wiki page " + wiki_page_object.title + " updated")
     
     
 

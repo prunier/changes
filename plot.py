@@ -47,12 +47,14 @@ def plot_modifications(session_name:str, data:defaultdict):
     plt.savefig(plot_filename)
     logger.info(f"the plot has been stored in {plot_filename}")
 
+    return plot_filename
+
 def plot_tags(session_name:str,dict_of_list):
 
     plot_filename = f"{session_name}_tags.png"
 
     # transform text time dta into datetime format
-    date_strings = sorted(list(dict_of_list.keys()))
+    date_strings = list(dict_of_list.keys())
     #for  date_string in dict_of_list.keys():
     #    date_data = try_parse_date(date_string)
     #    x_values.append(date_data)
@@ -89,3 +91,4 @@ def plot_tags(session_name:str,dict_of_list):
     # sauvegarder dans un fichier
     plt.savefig(plot_filename)
     logger.info(f"the plot has been stored in {plot_filename}")
+    return plot_filename

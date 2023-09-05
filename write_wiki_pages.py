@@ -1,22 +1,13 @@
 from datetime import datetime, timedelta
 import os
 import sys
-from common import try_parse_date
+from common import LAST_3MONTHS_DATE, LAST_MONTH_DATE, LAST_WEEK_DATE, LAST_YEAR_DATE, try_parse_date
 from log_config import logger
 from wiki import REDMINE_PROJECT, Wiki_pages_with_Redmine
-
+import common
 
 PREFIX_WIKI_PAGE = "Changes"
 TOP_PARENT_WIKI_PAGE = "Files_modified_in_projects"
-
-SINCE_DATE = "2023-06-09 15:00"
-UNTIL_DATE = "2023-06-14 14:00"
-
-CURRENT_DATE = datetime.now()
-LAST_WEEK_DATE = CURRENT_DATE - timedelta(days=7)
-LAST_MONTH_DATE = CURRENT_DATE - timedelta(days=30)
-LAST_YEAR_DATE = CURRENT_DATE - timedelta(days=365)
-LAST_3MONTHS_DATE = CURRENT_DATE - timedelta(days=92)
 
 WIKI_PAGE_HEADER_SGS_LEVEL = """
 {background:lightgrey}. |_. Color |_. Tag created before...|
@@ -99,7 +90,7 @@ def tag_colored (tag:str, date:str) -> str:
 
     return et
 
-def print_the_modifications_at_SGS_level(session_name:str,gitlab_projects_selected,filter_modifications_list):
+def print_the_modifications_at_SGS_level(session_name:str,gitlab_projects_selected,filter_modifications_list,plot_filename:str,file_output_name:str):
 
     if len(gitlab_projects_selected) == 0:
         return
@@ -114,7 +105,7 @@ def print_the_modifications_at_SGS_level(session_name:str,gitlab_projects_select
 
 
     output_wiki_page_name = PREFIX_WIKI_PAGE + "_" + session_name
-    wiki_page_header = f"\n\nh2. Count of modified files" + "\n\n\n"
+    wiki_page_header = "\n\nh2. Count of modified files\n\n{{>toc}}\n"
     wiki_page_header += WIKI_PAGE_HEADER_SGS_LEVEL
     wiki_page_header += ", ".join(filter_modifications_list) + "*\n\n\n"
     output_wki_object = wiki.create_table_in_a_new_wiki_page(output_wiki_page_name, TOP_PARENT_WIKI_PAGE, wiki_page_header, [], [])
@@ -171,10 +162,13 @@ def print_the_modifications_at_SGS_level(session_name:str,gitlab_projects_select
         wiki_page_header = (f"\n\nh2. {level_name} \n\n\nCount of modifications in files\n\n\n")
         output_wki_object = wiki.add_table_in_wiki_page(output_wki_object, wiki_page_header, table_data, headers)
 
+    # add the plot of the count of tags by month in the wiki page
+    wiki.add_file_in_wiki_page_object(output_wki_object,file_paths=[plot_filename,file_output_name])
 
 
 
-def print_the_tags(session_name:str,tags_by_level:dict, tags_by_period:dict):
+
+def print_the_tags(session_name:str,tags_by_level:dict, tags_by_period:dict, plot_filename:str):
 
     start_tag_date = ""
     end_tag_date = ""
@@ -185,25 +179,31 @@ def print_the_tags(session_name:str,tags_by_level:dict, tags_by_period:dict):
     wiki = Wiki_pages_with_Redmine(project_name=REDMINE_PROJECT)
 
     output_wiki_page_name = PREFIX_WIKI_PAGE + "_" + session_name + "_tags"
-    wiki_page_header = f"\n\nh2. Tags in the period" + "\n\n\n"
-    output_wki_object = wiki.create_table_in_a_new_wiki_page(output_wiki_page_name, TOP_PARENT_WIKI_PAGE, wiki_page_header, [], [])
+    wiki_page_header = "\n\nh2. Tags in the period\n\n{{>toc}}\n"
+    output_wiki_page_object = wiki.create_table_in_a_new_wiki_page(output_wiki_page_name, TOP_PARENT_WIKI_PAGE, wiki_page_header, [], [])
 
     # pretty print of the list of the tags
     headers = ['Group','Project Name', 'tag', 'Creation date','Author']
 
     for level_name, table_data in tags_by_level.items():
         wiki_page_header = f"\n\nh3. {level_name} \n\n\n"
-        wiki.add_table_in_wiki_page(output_wki_object, wiki_page_header, table_data, headers,flag_add_line=True)
+        wiki.add_table_in_wiki_page(output_wiki_page_object, wiki_page_header, table_data, headers,flag_add_line=True)
 
     wiki_page_header = f"\n\nh2. Tags by month in the period" + "\n\n\n"
     headers = ['Date','tag','Creation date','Author'] #, 'Creation date','Author']
 
     table_data = []
-    for date,tags in tags_by_period.items():
+    sorted_keys_reverse = sorted(tags_by_period.keys(), reverse=True)
+
+    for date in sorted_keys_reverse:
+        tags = tags_by_period[date]
         if len(tags):
             for t in tags:
                 table_data.append((date,t['name'],t['created_at'],t['author_name']))
         else:
             table_data.append((date,"-","-","-"))
 
-    wiki.add_table_in_wiki_page(output_wki_object, wiki_page_header, table_data, headers,flag_add_line=True)
+    wiki.add_table_in_wiki_page(output_wiki_page_object, wiki_page_header, table_data, headers,flag_add_line=True)
+
+    # add the plot of the count of tags by month in the wiki page
+    wiki.add_file_in_wiki_page_object(output_wiki_page_object,file_paths=[plot_filename])

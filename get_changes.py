@@ -368,15 +368,16 @@ def main(args):
     start_tag_date,end_tag_date,tag_by_level = common.get_the_tags_in_the_period_at_SGS_level(modifications)
     tags_by_period = common.get_the_tags_by_period(modifications,start_tag_date,end_tag_date)
 
+    plot_filename_modifications = plot.plot_modifications (session_name,modifications)
+    plot_filename_tags_by_period = plot.plot_tags(session_name,tags_by_period)
 
     if save_in_wiki_pages:
-        #write_wiki_pages.print_the_modifications_at_SGS_level(session_name,data,filter_modifications_list)
-        write_wiki_pages.print_the_tags (session_name,tag_by_level,tags_by_period)
+        write_wiki_pages.print_the_modifications_at_SGS_level(session_name,modifications,filter_modifications_list,plot_filename_modifications,file_output_name)
+        write_wiki_pages.print_the_tags (session_name,tag_by_level,tags_by_period,plot_filename_tags_by_period)
 
 
     print_in_console_the_gitlab_projects_selected(modifications)
-    plot.plot_modifications (session_name,modifications)
-    plot.plot_tags(session_name,tags_by_period)
+
 
 
 if __name__ == '__main__':

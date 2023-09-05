@@ -3,6 +3,14 @@ import os
 import pytz
 from tabulate import tabulate
 
+SINCE_DATE = "2023-06-09 15:00"
+UNTIL_DATE = "2023-06-14 14:00"
+
+CURRENT_DATE = datetime.now()
+LAST_WEEK_DATE = CURRENT_DATE - timedelta(days=7)
+LAST_MONTH_DATE = CURRENT_DATE - timedelta(days=30)
+LAST_YEAR_DATE = CURRENT_DATE - timedelta(days=365)
+LAST_3MONTHS_DATE = CURRENT_DATE - timedelta(days=92)
 
 
 
@@ -64,8 +72,6 @@ def get_the_tags_in_the_period_at_SGS_level(gitlab_projects_selected):
 
 def get_the_tags_by_period(data:dict,start_tag_date:str,end_tag_date:str,periodicity_in_days:int= 30)->dict:
 
-    # split the period 
-    periodicity = timedelta(days=periodicity_in_days)
     # Initialize an empty list to store the dates
     date_list = []
     tags_by_period = {}
@@ -103,4 +109,5 @@ def get_the_tags_by_period(data:dict,start_tag_date:str,end_tag_date:str,periodi
                         if created_at >= date and created_at < next_date:
                             tags_by_period[key_date].append(tag_item)
 
+    # retuen the reversed list (the latest tags first)
     return tags_by_period
